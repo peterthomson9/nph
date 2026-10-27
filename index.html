@@ -3,8 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#DEDCEC" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0F0F16" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0F0F16">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="description" content="Meal plans for N & P and Lil H, with a shared shopping list.">
 <link rel="manifest" href="manifest.webmanifest">
@@ -16,7 +15,8 @@ html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;fon
 /* standalone app: no sync yet, so no sync label */
 .sync{display:none!important}
 .upd{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(60px + env(safe-area-inset-bottom,0px));z-index:60;border:none;border-radius:12px;padding:10px 16px;font:800 .86rem var(--body,system-ui);background:var(--np);color:#fff;box-shadow:0 8px 24px rgba(24,20,48,.3)}</style>
-<script>window.NPH_VERSION="1.0";</script>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("nph-theme")||"dark"}catch(_){document.documentElement.dataset.theme="dark"}</script>
+<script>window.NPH_VERSION="1.1";</script>
 <title>NPH</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700;800&display=swap">
 <style>
@@ -634,6 +634,8 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .stick.s2{margin-top:-14px;padding-top:3px}
 .page>.dpanel{margin-bottom:12px}
 .stick.s1.stuck{box-shadow:0 1px 0 var(--line),0 8px 16px -12px rgba(24,20,48,.35)}
+.themeseg{justify-self:start}
+.themeseg button{padding:6px 16px}
 </style>
 </head>
 <body>
@@ -1366,7 +1368,7 @@ function Planner(cfg){
     const b=blockAt(slot,n),end=b.start+b.len-1;
     const days=[];for(let k=n;k<=end;k++)days.push(k);
     const what=days.length>1?`${w} from ${dw(n)} to ${dw(end)} (${days.length} days)`:`${dw(n)} ${w}`;
-    const keep=n>b.start?`${dw(b.start)}${n-b.start>1?" to "+dw(n-1):""} stays as planned.`:"";
+    const k0=Math.max(b.start,todayN()),keep=n>k0?`${dw(k0)}${n-k0>1?" to "+dw(n-1):""} stays as planned.`:"";
     return {what,keep,apply:()=>{
       if(n===b.start){setOv("sw-"+slot+b.start,SK);for(let k=n+1;k<=end;k++)if(ov("x-"+slot+k))setOv("x-"+slot+k,null)}
       else days.forEach(k=>setOv("x-"+slot+k,SK))}};
@@ -1416,6 +1418,7 @@ function Planner(cfg){
     <div class="empty" id="${id}-rnone" hidden><h3>No recipes match</h3><p class="note">Try a dish name or an ingredient, like “lentils”.</p></div>${cfg.shelves.map(([t,lab,icn,col])=>`<section class="fsec scard shut" style="--kc:${col}"><button class="shead" data-fold aria-expanded="false">${ic(icn)}<span>${lab}</span><small id="${id}-cnt-${t}"></small>${ic("chev","chev")}</button><div class="shelf" id="${id}-shelf-${t}"></div></section>`).join("")}</div>
   <div class="dpanel" id="${id}-p-safe" hidden><h2>Info &amp; safety</h2>
     <div class="infosec"><h3>This rotation</h3><p class="itx" id="${id}-vt"></p><p class="itx" id="${id}-vs"></p></div>
+    <div class="infosec"><h3>Appearance</h3><div class="seg themeseg" role="group" aria-label="Appearance"><button data-themeopt="dark">Dark</button><button data-themeopt="light">Light</button></div></div>
     <div class="infosec"><h3>How it works</h3><p class="itx">${cfg.howto}</p></div>
     <div class="infosec"><h3>${cfg.safeTitle}</h3><ul>${cfg.safe.map(x=>`<li>${x}</li>`).join("")}</ul></div>${window.NPH_VERSION?`<p class="note">NPH version ${window.NPH_VERSION}</p>`:""}</div>
   <div class="stick s2">
@@ -1498,7 +1501,7 @@ function Planner(cfg){
       if(cfg.BAKEW&&mod(n,7)===6&&bakeAt(n)===r)out.push(`${d} bake`)}
     return out;
   }
-  const timeChips=s=>esc(s)
+  const timeChips=s=>s  /* takes text that is already escaped */
     .replace(/(\d{2,3}°C(?: \(\d{2,3}°C fan\))?)/g,`<span class="tchip hot">${ic("flame")}$1</span>`)
     .replace(/(\d+(?:[–-]\d+)?\s?(?:mins?|minutes|hours?)\b)/g,`<span class="tchip">${ic("clock")}$1</span>`);
   let rc={};
@@ -1843,7 +1846,16 @@ function go(p,push){
 document.querySelector(".tabbar").addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(b)go(b.dataset.go,true)});
 window.addEventListener("hashchange",()=>{if(window.nphSkipHash&&window.nphSkipHash())return;go(location.hash.slice(1))});
 
-function renderAll(){PN.render();LH.render();renderShop()}
+function renderAll(){PN.render();LH.render();renderShop();showTheme()}
+/* appearance: dark unless this phone has chosen light */
+let themePref="dark";try{themePref=localStorage.getItem("nph-theme")||"dark"}catch(_){}
+function applyTheme(){document.documentElement.dataset.theme=themePref;
+  const bg=themePref==="dark"?"#0F0F16":"#DEDCEC";
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m=>m.remove());
+  const m=document.createElement("meta");m.name="theme-color";m.content=bg;document.head.appendChild(m)}
+function showTheme(){document.querySelectorAll("[data-themeopt]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.themeopt===themePref))}
+applyTheme();
+document.addEventListener("click",e=>{const t=e.target.closest("[data-themeopt]");if(!t)return;themePref=t.dataset.themeopt;try{localStorage.setItem("nph-theme",themePref)}catch(_){}applyTheme();showTheme()});
 /* pinned header: shadow once it's stuck, and keep "scroll to a day" clear of it */
 function updStick(){
   /* pinned layers stack: each one pins just below the ones above it; the lowest pinned one gets the shadow */
