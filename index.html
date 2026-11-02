@@ -2562,7 +2562,7 @@ function setQty(k,q){const cur=stockOf(k);put("stock",k,{...cur,out:cur.out!==fa
 
 /* ================= Meal planner (one engine, two pages) ================= */
 const PLANNERS={};
-const NPH_V=window.NPH_VERSION||"2.108";
+const NPH_V=window.NPH_VERSION||"2.109";
 function Planner(cfg){
   const id=cfg.id, R=cfg.R, T=cfg.T, IC=cfg.IC, BLK=cfg.BLK, ANCHOR=cfg.anchor;
   const P={id,cfg};
@@ -2977,8 +2977,9 @@ function Planner(cfg){
     box.innerHTML=h}
   /* v2.82: bring a meal or a day to the middle of the screen and highlight it */
   const inRange=n=>{if(rFrom==null)defRange();if(n<rFrom)rFrom=weekOf(n);if(n>rTo)rTo=weekOf(n)+6;P.render()};
-  P.focusMeal=(sl,n,colour)=>{inRange(n);const g=sl==="K"?root.querySelector(`.day[data-n="${n}"] .row.bakerow`):root.querySelector(`.grp[data-n="${n}"][data-pos="${orderOf(n).indexOf(sl)}"]`);
-    const el=g?(g.classList.contains("row")?g:g.querySelector(".row")||g):root.querySelector(`.day[data-n="${n}"]`);window.nphGlide(el,()=>window.nphFlash(el,colour))};
+  P.focusMeal=(sl,n,colour,tag)=>{inRange(n);const g=sl==="K"?root.querySelector(`.day[data-n="${n}"] .row.bakerow`):root.querySelector(`.grp[data-n="${n}"][data-pos="${orderOf(n).indexOf(sl)}"]`);
+    const own=g&&tag?(tag==="m"?g.querySelector('.meal:not([data-ik^="p"]):not([data-ik^="n"])'):g.querySelector(`.meal.who${tag}`))?.closest('.row'):null;
+    const el=own||(g?(g.classList.contains("row")?g:g.querySelector(".row")||g):root.querySelector(`.day[data-n="${n}"]`));window.nphGlide(el,()=>window.nphFlash(el,colour))};
   P.focusDay=(n,colour)=>{inRange(n);const el=root.querySelector(`.day[data-n="${n}"]`);window.nphGlide(el,()=>window.nphFlash(el,colour))};
   P.showDay=(n,reset,smooth)=>{if(rFrom==null||reset)defRange();if(n<rFrom)rFrom=weekOf(n);if(n>rTo)rTo=weekOf(n)+6;P.render();jumpTo(n,smooth===true)};
   let selN=todayN(), pickN=null, calY=nToDate(selN).getUTCFullYear(), calM=nToDate(selN).getUTCMonth(), resetArm=0;
@@ -3763,10 +3764,26 @@ function Planner(cfg){
           if(iss.length)out.push([4,"warn","info",`${wd} ${SW[sl]}: ${iss[0].t.replace(/^No /,"no ").replace(/ in this meal$/,"")}`,`meal:${sl}:${n}`])});
         if(!dayHasIron(n))out.push([4,"warn","info",`No iron-rich food on ${wd}`,`day:${n}`])}
       if(!salmonInWeek(mon)){let fs=null;for(let n=tn;n<mon+7&&!fs;n++)for(const sl of ["L","D"])if(!fs&&!(n===tn&&hrNow()>=eatAt(id,sl))){fs=`meal:${sl}:${n}`}out.push([4,"warn","fish",`No salmon this week`,fs||"today"])}}
-    for(let n=tn;n<weekOf(tn)+7;n++)for(const sl of ["B","L","D"]){const r=sl==="B"?bfAt(n):valAt(sl,n);if(R[r]&&!R[r].ta&&missing(r,ikOfSlot(sl,n)).length)out.push([4,"warn","swap",`${fmt(n,{weekday:"short"})} ${SLOTWORD[sl]} · ${mealName(r,subsOf(r,ikOfSlot(sl,n)),true)}`,`meal:${sl}:${n}`])}
+    const swapBatches=new Map(),lots=foodLots();
+    for(let n=tn;n<weekOf(tn)+7;n++)for(const sl of ["B","L","D"]){
+      const main=sl==="B"?bfAt(n):valAt(sl,n),split=splitOf(sl,n);
+      const picks=split?["p","n"].map(tag=>({tag:split[tag]?tag:"m",r:split[tag]||main})): [{tag:"m",r:main}];
+      for(const {tag,r} of picks){if(!R[r]||R[r].ta)continue;
+        const ref=S[id]["fz-"+tag+sl+n],ik=ref&&!lots[ref.f]?.planned?"@lot:"+ref.f:tag!=="m"?tag+sl+n:sourceIk(r,ikOfSlot(sl,n),sl+":"+n);
+        if(!missing(r,ik).length)continue;
+        const lot=ref&&lots[ref.f]||batchAt(r,ik),parsed=lot?.src?parseSrc(lot.src):null,source=parsed&&Number.isFinite(parsed.n)&&["B","L","D"].includes(parsed.slot)?parsed:null;
+        const cn=source?source.n:tag!=="m"||sl==="B"?n:runOf(sl,n).s,cs=source?.slot||sl,ct=source?.tag||tag;
+        const stored=!!lot&&!source;
+        const key=stored?"lot:"+(ref?.f||ik):[ct,cs,cn,r].join(":"),act=stored?"cooked:"+(ref?.f||ik.slice(5)):`cook:${ct}:${cs}:${cn}`;
+        const abs=stored?lot.made:absOf(cn),cooked=abs<todayAbs()||abs===todayAbs()&&hrNow()>=cookBy(id,cs);
+        const name=mealName(r,subsOf(r,ik),true,lot?.facts?.recipe||R[r]);
+        if(!swapBatches.has(key))swapBatches.set(key,[4,"warn","swap",name,act,`Meal ${cooked?"cooked":"to cook"} ${fmtAbs(abs,{weekday:"short",day:"numeric",month:"short"})}`]);
+      }
+    }
+    out.push(...swapBatches.values());
     if(!out.length)out.push([9,"ok","check","All set: nothing to prep","today"]);
     out.sort((a,b)=>a[0]-b[0]);huItems=out;
-    const chip=([,cls,icn,txt,act])=>`<button class="huc ${cls}" data-hu="${act}" data-hucolor="${cls}">${ic(icn)}${esc(txt)}</button>`;
+    const chip=([,cls,icn,txt,act,detail])=>`<button class="huc ${cls}" data-hu="${act}" data-hucolor="${cls}">${ic(icn)}${esc(txt+(detail?" · "+detail:""))}</button>`;
     const full=out.map(chip).join("");if(out.length<2)return {full,sum:""};
     /* side by side when they all fit; otherwise one chip that opens the list (v2.73) */
     const sev=["bad","warn","cool"].find(c=>out.some(o=>o[1]===c))||"";
@@ -3800,7 +3817,7 @@ function Planner(cfg){
   }
   function huList(){const l=$(id+"-hul");if(!l)return;
     const groups=new Map();huItems.forEach(item=>{const group=huGroup(item),key=group[0];if(!groups.has(key))groups.set(key,{group,items:[]});groups.get(key).items.push(item)});
-    const row=([,cls,icon,text,act])=>`<button type="button" class="hurow" style="--c:${huCol[cls]||"var(--muted)"}" data-hu="${act}" data-hucolor="${cls}"${huOpen?"":" tabindex=\"-1\""}>${ic(icon)}<span>${esc(text)}</span>${ic("chev","hrchev")}</button>`;
+    const row=([,cls,icon,text,act,detail])=>`<button type="button" class="hurow" style="--c:${huCol[cls]||"var(--muted)"}" data-hu="${act}" data-hucolor="${cls}"${huOpen?"":" tabindex=\"-1\""}>${ic(icon)}<span>${esc(text)}${detail?`<small class="husource">${esc(detail)}</small>`:""}</span>${ic("chev","hrchev")}</button>`;
     l.innerHTML=[...groups.values()].map(({group:[key,label,icon,cls],items})=>{const open=huExpanded.has(key),first=items[0];return `<section class="hugroup" style="--c:${huCol[cls]||"var(--muted)"}"><div class="hughead"><button class="hujump" data-hu="${first[4]}" data-hucolor="${cls}">${ic(icon)}<span>${label}</span><small>${items.length}</small></button><button class="huexpand" data-hugroup="${key}" aria-expanded="${open}" aria-label="${open?"Hide":"Show"} ${label.toLowerCase()}" aria-controls="${id}-hu-${key}">${ic("chev")}</button></div><div id="${id}-hu-${key}" class="hugitems"${open?"":" hidden"}>${items.map(row).join("")}</div></section>`}).join("");requestAnimationFrame(fitHu);
   }
 
@@ -3815,7 +3832,7 @@ function Planner(cfg){
       ["sw","swap","var(--swap)",gsw?[[`${ic("swap")}Changed everywhere`,"sw"]]:[],"ingredient swaps"]].filter(c=>c[3].length);
     if(!cats.length)return "";
     return `<div class="chips pc">${cats.map(([k,icn,col,items,lab])=>`<button type="button" class="pi" data-pcat="${k}" style="--pcol:${col}" aria-expanded="false" aria-label="${items.length} ${lab}" title="${lab[0].toUpperCase()+lab.slice(1)}">${ic(icn)}${items.length>1?`<b>${items.length}</b>`:""}</button>${items.map(([h,c])=>`<span class="chip ${c}" data-pin="${k}" style="--pcol:${col}" hidden>${h}</span>`).join("")}`).join("")}</div>`}
-  P.huAct=(a,col)=>{const colour=huCol[col]||"var(--warn)";if(a.startsWith("meal:")){const [,sl,n]=a.split(":");P.focusMeal(sl,+n,colour);return}
+  P.huAct=(a,col)=>{const colour=huCol[col]||"var(--warn)";if(a.startsWith("cook:")){const [,tag,sl,n]=a.split(":");P.focusMeal(sl,+n,colour,tag);return}if(a.startsWith("meal:")){const [,sl,n]=a.split(":");P.focusMeal(sl,+n,colour);return}
     if(a.startsWith("day:")){P.focusDay(+a.slice(4),colour);return}
     if(a.startsWith("cooked:")){const fid=a.slice(7);window.nphFocusStock("cooked",id,()=>[...document.querySelectorAll(`#page-shop [data-fcard^="${CSS.escape(fid)}:"]`)],colour);return}
     if(a.startsWith("buy:")){const ks=a.slice(4).split(",");window.nphFocusStock("buy",id,()=>ks.map(k=>document.querySelector(`#page-shop [data-tick="${CSS.escape(k)}"]`)).filter(Boolean).map(b=>b.closest(".item")),colour);return}if(a.startsWith("thaw:")){const [,fid,i]=a.split(":");openMove(fid,+i,"thaw",null,1);return}
@@ -5251,6 +5268,14 @@ function cleanupPast(){const flag="nph-clean-2510"+(syncMode==="live"?"-live":""
   const CUT=Math.round(Date.UTC(2026,9,25)/DAY);
   Object.values(PLANNERS).forEach(P=>P.clearBefore(CUT));try{localStorage.setItem(flag,"1")}catch(_){}}
 /* a tap anywhere but a meal's own buttons closes its edit view; tapping a button closes it after the button does its job */
+/* An outside press dismisses the checklist before the underlying control can
+   focus, start a calendar hold/meal drag, swipe pages or receive its click. */
+const openHeadsUp=()=>document.querySelector('#page-np:not([hidden]) .hudrop.open,#page-lilh:not([hidden]) .hudrop.open');
+let huOutsidePress=false;
+window.addEventListener('pointerdown',e=>{const panel=openHeadsUp();huOutsidePress=!!panel&&!panel.contains(e.target);if(huOutsidePress&&e.button===0){e.preventDefault();e.stopImmediatePropagation()}},{capture:true});
+window.addEventListener('pointercancel',()=>huOutsidePress=false,{capture:true});
+window.addEventListener('touchstart',e=>{const panel=openHeadsUp();if(panel&&!panel.contains(e.target))e.stopImmediatePropagation()},{capture:true,passive:true});
+window.addEventListener('click',e=>{const panel=openHeadsUp();if(huOutsidePress||panel&&!panel.contains(e.target)){huOutsidePress=false;e.preventDefault();e.stopImmediatePropagation();Object.values(PLANNERS).forEach(P=>P.setHu&&P.setHu(false))}},{capture:true});
 document.addEventListener("click",e=>{if(!e.huDone&&!e.target.closest(".hudrop"))Object.values(PLANNERS).forEach(P=>P.setHu&&P.setHu(false));if(e.edDone)return;Object.values(PLANNERS).forEach(P=>P.closeEd());if(fOpen&&!e.target.closest("[data-fcard]"))closeFoodActions()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeFoodActions();Object.values(PLANNERS).forEach(P=>{P.closeEd();if(P.setHu)P.setHu(false)})}});
 /* Today: tap to jump to today, press and hold for the calendar (v2.73) */
@@ -5838,6 +5863,7 @@ updStick();requestAnimationFrame(()=>requestAnimationFrame(scrollToToday));setTi
 .hugitems .hurow{width:100%;min-height:38px;padding:6px 5px;border:none;border-radius:7px;font-size:var(--fs-cap);font-weight:600;background:none;gap:7px}
 .hugitems .hurow>.ic{width:14px;height:14px}
 .hugitems .hurow span{white-space:normal;overflow-wrap:anywhere}
+.hugitems .hurow .husource{display:block;margin-top:2px;font-size:var(--fs-micro);font-weight:600;color:var(--muted)}
 .nphfx i{background:linear-gradient(90deg,transparent 0%,color-mix(in srgb,var(--flash,var(--warn)) 20%,transparent) 22%,color-mix(in srgb,var(--flash,var(--warn)) 24%,transparent) 58%,color-mix(in srgb,var(--flash,var(--warn)) 42%,transparent) 63.5%,rgb(255 255 255/.30) 65%,color-mix(in srgb,var(--flash,var(--warn)) 10%,transparent) 68%,transparent 71%)}
 .nav-motion{position:fixed;inset:0;bottom:calc(48px + env(safe-area-inset-bottom,0px));z-index:30;overflow:hidden;pointer-events:none;background:var(--bg);contain:layout paint}
 .nav-frame{position:absolute;inset:0;overflow:hidden;pointer-events:none;will-change:transform,opacity}

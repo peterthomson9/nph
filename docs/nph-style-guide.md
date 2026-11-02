@@ -634,3 +634,9 @@ Recipe headers fill behind their floating visible sheet handle. Navigation anima
 Owner correction, v2.108: remove Scroll for more and End of list from both planners' checklists. Keep an unlabelled 8px solid bottom edge, internal scrolling and full last-item access. This supersedes the footer-label wording above.
 
 | 54 | 2 Nov 2026 | 2.108 | Checklist footer text removal | Local disposable Brave, light/dark at 320/400px and 640/900px heights: no footer text, complete opening rows, solid bottom edge, no navigation overlap and last item fully reachable. |
+
+Owner correction, v2.109: Ingredient swaps uses one existing compact row per source cooking, with the English meal name and a muted micro-size Meal cooked [date] / Meal to cook [date] line. Keep separate cookings distinct. Selecting it highlights the original source row. An outside press dismisses the checklist before underlying controls can act; disclosures and links within it retain their existing behaviour.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 55 | 2 Nov 2026 | 2.109 | Source-grouped swaps and dismiss-first behaviour | Disposable Brave, N & P/Lil H, light/dark at 320/400px: same-source leftovers/references stack, separate/fresh cookings remain distinct, source card highlighted, saved records unchanged. Outside tab/calendar presses dismiss without activating the control; second tap works. Dropdown edge/last-item checks retained. Only affected surfaces checked. |

@@ -10,6 +10,11 @@ Use logo family B across installed app artwork and shared page icons. Follow the
 
 ## 0. Core rules (draft 30 Oct 2026, app v2.74, for P to check)
 
+### v2.109 source-grouped ingredient notices (2 Nov 2026)
+
+- C22/C23: Ingredient swaps notices stack by the named cooking/source, not by portion or leftover date. Show one effective English meal name plus Meal cooked [source date], or Meal to cook [date] for future cookings. Distinct cookings of the same recipe, fresh one-day meals and separate split-person cookings remain distinct. Natural leftovers and explicit fridge/freezer assignments from the same source share one notice. A selection jumps to and highlights the source cook-day card, including the correct person's split row. If old manually stored food has no recorded source card, link to its named Cooked entry instead of inventing a source meal.
+- An open checklist consumes the first outside tap: close it without activating the underlying page tab, recipe, calendar hold, form focus or meal drag. Internal disclosure controls and item links remain usable. Grouping, navigation and dismissal are view-only; do not rewrite plans, batch facts, portions or saved history. Preserve the solid bottom edge and full last-row access.
+
 ### v2.107 approved stock and notification behaviour (2 Nov 2026)
 
 - ST3/ST4/C22: To buy captures its weekly-priority ordering on entering the view. Ticking/unticking, quantity changes and Undo preserve row positions for that visit. Leaving/reopening may recompute priority; stock and missing-ingredient consequences are unchanged.
