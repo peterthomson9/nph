@@ -10,6 +10,12 @@ Use logo family B across installed app artwork and shared page icons. Follow the
 
 ## 0. Core rules (draft 30 Oct 2026, app v2.74, for P to check)
 
+### v2.111 activation-only meal-header pill highlights (2 Nov 2026)
+
+- C22: switching a day-view warning/ingredient-change pill on highlights only that day's rows with warnings/changes, in the pill's amber/green respectively. Switching it off never triggers a wave. Other dates and rows without that type of information do not highlight.
+- Cooked Fridge/Freezer pills highlight only cards in their own profile/storage group matching the selected mode: usable unassigned portions for amber warnings, actual planned uses for the profile-coloured calendar (N & P violet, Lil H blue), active freezing in freezer blue, or active thawing in fridge blue. Read the same live applicability used by the cards and counts; inactive/completed processes and unplanned cards do not highlight for those modes. Opening a collapsed group with its pill selects and highlights that mode; switching an active mode off produces no wave. The existing expired-food pill remains a momentary red highlight without changing the selected text mode.
+- Reuse semantic colour tokens and the existing wave/reduced-motion fallback. Highlights and text modes are view state only: do not change household records, portions, source facts, storage times or Undo history.
+
 ### v2.110 all-window Back and checklist header actions (2 Nov 2026)
 
 - All windows, dialogs, popups and dropdowns, including Things to check today, must register with the app's shared Back-history handler. Mobile Back or its back-swipe closes the newest open window first, leaving the current app page intact. Nested windows close in reverse opening order. Closing by an outside tap, item link, close button or Escape removes that window's history entry so no stale Back step remains. Opening a subgroup within a dropdown is a disclosure, not a new window/history step. Apply this to every future window too.

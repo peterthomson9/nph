@@ -46,7 +46,7 @@ A checker that reads the whole plan and stored food and lists anything breaking 
 
 ## Current version
 
-v2.110 (2 Nov 2026). Phones may retain an older cached version until its update is installed. Verify the hosted version when publishing. See the end of `docs/nph-changelog.md` for what's in each release.
+v2.111 (2 Nov 2026). Phones may retain an older cached version until its update is installed. Verify the hosted version when publishing. See the end of `docs/nph-changelog.md` for what's in each release.
 
 ## Working with P
 

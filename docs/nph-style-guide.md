@@ -646,3 +646,9 @@ Owner correction, v2.110: keep category symbols and disclosure arrows in checkli
 | Pass | Date | App version | Area | Result |
 |---|---|---|---|---|
 | 56 | 2 Nov 2026 | 2.110 | Header-only symbols, visible group highlights and Back dismissal | Local disposable Brave, N & P/Lil H, light/dark at 320/400px: header icons retained, row icons/arrows absent, multiple visible expired/source-meal targets highlighted, hidden/off-screen/unrelated targets skipped. Actual browser Back closes the checklist and a nested calendar in order without leaving the page or editing saves. Existing dropdown edge, source-link and dismiss-first checks retained. Only affected surfaces inspected; browser history drives native mobile back-swipe behaviour. |
+
+Owner correction, v2.111: day/Cooked header pills use the existing semantic wave only when activated, and only on matching cards in that date or storage/profile group. Use the pill's own colour token: amber warnings, green ingredient changes, profile calendar colour, freezer-blue freezing and fridge-blue thawing. No wave on deactivation. Keep the existing momentary expired-food highlight red and honour reduced motion.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 57 | 2 Nov 2026 | 2.111 | Activation-only applicable-card pill waves | Disposable Brave, both profiles, light/dark at 320/400px: Fridge/Freezer warning, calendar, freezing/thawing applicability and colours; day warning/change waves; no wave when switched off, no unrelated cards highlighted and household records unchanged. Calendar-wave screenshots inspected. Existing Cooked actions/portion behaviour and reduced-motion CSS retained. Only affected surfaces checked. |

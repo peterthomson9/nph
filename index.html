@@ -1670,7 +1670,7 @@ html,body{overflow-anchor:none}
 .days .day:not(.dwon) .meal.chk em{font-weight:700!important}
 .days .day.dwon .meal em{color:var(--warn)!important;font-weight:700!important}
 .days .day.dwon .meal em .nw{color:var(--muted);font-weight:600}
-@media (prefers-reduced-motion:no-preference){.day.dwjust .meal em{animation:dwfade .22s ease}}
+@media (prefers-reduced-motion:no-preference){.day.dwjust .meal[data-has-warning="true"] em{animation:dwfade .22s ease}}
 @keyframes dwfade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
 /* recipe pills folded into round icons */
 .chips.pc{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
@@ -2562,7 +2562,7 @@ function setQty(k,q){const cur=stockOf(k);put("stock",k,{...cur,out:cur.out!==fa
 
 /* ================= Meal planner (one engine, two pages) ================= */
 const PLANNERS={};
-const NPH_V=window.NPH_VERSION||"2.110";
+const NPH_V=window.NPH_VERSION||"2.111";
 function Planner(cfg){
   const id=cfg.id, R=cfg.R, T=cfg.T, IC=cfg.IC, BLK=cfg.BLK, ANCHOR=cfg.anchor;
   const P={id,cfg};
@@ -3310,13 +3310,13 @@ function Planner(cfg){
   function mealBtn(r,label,em,cls,ik,ctx,skip,o){o=o||{};const at=/^(?:main|day):([LD]):(-?\d+)$/.exec(skip||"");
     pendX=skip?`<button class="sbtn xb" data-skip="${skip}" aria-label="Remove ${esc(label.toLowerCase())}" title="Remove this meal">${ic("x")}</button>`:spBtn;
     pendF=o.frz||"";
-    const h=mealBtn0(r,label,em,(cls||"")+(o.src?" from"+o.src:"")+(o.bad?" srcbad":"")+(o.warn?" srcwarn":"")+(o.chk?" chk":""),ik,ctx,o.src,at?at[1]+":"+at[2]:"",o.src||/left/.test(cls||"")?cookedNote(skip):"");
+    const h=mealBtn0(r,label,em,(cls||"")+(o.src?" from"+o.src:"")+(o.bad?" srcbad":"")+(o.warn?" srcwarn":"")+(o.chk?" chk":""),ik,ctx,o.src,at?at[1]+":"+at[2]:"",o.src||/left/.test(cls||"")?cookedNote(skip):"",o.warningCount??(o.warn||o.bad||o.hot||/miss/.test(cls||"")));
     return o.chk?h.replace('<button class="meal ',`<button data-chk="${o.chk}" class="meal `):h}
   /* food already cooked (leftovers, or a meal from the fridge or freezer): its recipe opens view only, and says where it came from */
   function cookedNote(skip){const m=/^(?:main|day|bf):(?:([LD]):)?(-?\d+)$/.exec(skip||"");if(!m)return "Already cooked";const sl=m[1]||"B",n=+m[2],z=S[id]["fz-m"+sl+n],l=z&&S.food[z.f];
     if(l)return `Made ${fmtAbs(l.made,{weekday:"short",day:"numeric",month:"short"})}`;if(sl==="B")return "Already cooked";return `Cooked ${fmt(runOf(sl,n).s,{weekday:"short",day:"numeric",month:"short"})}`}
-  function mealBtn0(r,label,em,cls,ik,ctx,src,at,ro){const source=sourceIk(r,ik,at),sm=subsOf(r,source),changes=ingredientChanges(r,sm,source);sCount+=changes.length;if(renderDay!=null&&dsOn.has(renderDay)){cls=(cls||"")+" swshow";em=changes.length?changes.map(c=>`<span class="change-${c.kind}" data-change="${c.kind}">${esc(c.text)}</span>`).join(" · "):'<span class="nw">No ingredient changes</span>'}
-    return `<button class="meal ${cls||""}" style="--c:var(--i-${icOf(r)});--tcol:var(--${R[r].t})" data-r="${r}"${ik?` data-ik="${ik}" data-ctx="${esc(ctx||"")}"`:""}${at?` data-at="${at}"`:""}${ro?` data-ro="${esc(ro)}"`:""}><span class="bub">${ic(icOf(r))}</span><span class="tx"><small>${label}${src?`<span class="srcb" title="${src==="fz"?"From the freezer":"From the fridge"}">${ic(src==="fz"?"snow":"fridge")}</span>`:""}</small><b>${esc(mealName(r,sm,true,factsAt(r,source)?.recipe||R[r]))}</b>${em?`<em>${em}</em>`:""}</span></button>`;
+  function mealBtn0(r,label,em,cls,ik,ctx,src,at,ro,hasWarning=false){const source=sourceIk(r,ik,at),sm=subsOf(r,source),changes=ingredientChanges(r,sm,source);sCount+=changes.length;if(renderDay!=null&&dsOn.has(renderDay)){cls=(cls||"")+" swshow";em=changes.length?changes.map(c=>`<span class="change-${c.kind}" data-change="${c.kind}">${esc(c.text)}</span>`).join(" · "):'<span class="nw">No ingredient changes</span>'}
+    return `<button class="meal ${cls||""}" style="--c:var(--i-${icOf(r)});--tcol:var(--${R[r].t})" data-r="${r}" data-has-warning="${!!hasWarning}" data-has-changes="${changes.length>0}"${ik?` data-ik="${ik}" data-ctx="${esc(ctx||"")}"`:""}${at?` data-at="${at}"`:""}${ro?` data-ro="${esc(ro)}"`:""}><span class="bub">${ic(icOf(r))}</span><span class="tx"><small>${label}${src?`<span class="srcb" title="${src==="fz"?"From the freezer":"From the fridge"}">${ic(src==="fz"?"snow":"fridge")}</span>`:""}</small><b>${esc(mealName(r,sm,true,factsAt(r,source)?.recipe||R[r]))}</b>${em?`<em>${em}</em>`:""}</span></button>`;
   }
   const swapBtn=(attr,hot,what)=>{const f=pendF,x=pendX||spBtn;pendF="";pendX="";
     return `<button class="mdots" data-mdots aria-label="Buttons for this meal" title="Recipe, swap, remove">${ic("dots")}</button>${f}<button class="sbtn swap${hot?" hot":""}" ${attr} aria-label="Swap ${what}" title="Swap for something else">${ic("swap")}</button>${x}`};
@@ -3328,7 +3328,7 @@ function Planner(cfg){
     let chk="";if(isRefDay("m","B",n)){const z=srcOf("m","B",n,false),rf=S[id]["fz-mB"+n];src=z?z.src:rf.w==="freezer"?"fz":"fr";em=(z&&z.em)||"From the "+rf.w;cls="stored";chk=z&&z.chk||""}
     const bw=[],bdet=/^Missing/.test(em)?(bw.push(em),note.replace(/^ · /,"")):em;
     let dw=false;if(NUT&&!R[r].ta&&n>=todayN()&&cls!=="stored"){const iss=dietIssues(r,subsOf(r,"b"+n),"B");if(iss.length){dw=true;em=`${iss[0].t}${em?" · "+em:""}`;iss.forEach(x=>bw.push(x.t))}}
-    return `<div class="row">${g}${mealBtn(r,label,cardEm(n,bdet,bw),cls,"b"+n,ctxOf(n,"breakfast"),"bf:"+n,{src,warn:dw,chk})}${swapBtn(`data-pk="bf:${n}"`,m.length,"breakfast")}</div>`;
+    return `<div class="row">${g}${mealBtn(r,label,cardEm(n,bdet,bw),cls,"b"+n,ctxOf(n,"breakfast"),"bf:"+n,{src,warn:dw,chk,warningCount:bw.length})}${swapBtn(`data-pk="bf:${n}"`,m.length,"breakfast")}</div>`;
   }
   /* the meal a day of a batch shows: its own day override, or the batch */
   function valAt(slot,k){return ov("x-"+slot+k)||(k<startN?SK:eff(blockAt(slot,k)))}
@@ -4274,8 +4274,8 @@ function Planner(cfg){
       put(id,key,{[oth]:own});toast(`${cap(SLOTWORD[slot])} split: ${oth.toUpperCase()} has their own, ${me.toUpperCase()} keeps the plan`);return}}
     /* tap a meal: its buttons show over it (v2.69) */
     /* v2.76: the ⋯ opens a meal's buttons; tapping the meal while they're open just closes them */
-    const dsb=e.target.closest("[data-dswap]");if(dsb){const n=+dsb.dataset.dswap;dsOn.has(n)?dsOn.delete(n):dsOn.add(n);dwOn.delete(n);P.render();return}
-    const dwb=e.target.closest("[data-dwarn]");if(dwb){const n=+dwb.dataset.dwarn;dsOn.delete(n);dwOn.has(n)?dwOn.delete(n):dwOn.add(n);dwN=n;P.render();dwN=null;return}
+    const dsb=e.target.closest("[data-dswap]");if(dsb){const n=+dsb.dataset.dswap,on=!dsOn.has(n);on?dsOn.add(n):dsOn.delete(n);dwOn.delete(n);P.render();if(on)root.querySelectorAll(`.day[data-n="${n}"] .meal[data-has-changes="true"]`).forEach(el=>window.nphFlash(el.closest('.row'),"var(--ok)"));return}
+    const dwb=e.target.closest("[data-dwarn]");if(dwb){const n=+dwb.dataset.dwarn,on=!dwOn.has(n);dsOn.delete(n);on?dwOn.add(n):dwOn.delete(n);dwN=on?n:null;P.render();dwN=null;if(on)root.querySelectorAll(`.day[data-n="${n}"] .meal[data-has-warning="true"]`).forEach(el=>window.nphFlash(el.closest('.row'),"var(--warn)"));return}
     const md=e.target.closest(".days .row [data-mdots]");if(md){const k=edKeyOf(md.closest(".row"));e.edDone=true;if(edKey===k)closeEd();else{closeEd();openEd(k)}return}
     if(e.target.closest(".days .row.ed .meal")&&!e.target.closest(".edb")){e.edDone=true;closeEd();return}
     const ef=e.target.closest("[data-edfix]");if(ef)fixN=+ef.dataset.edfix;
@@ -4847,7 +4847,7 @@ function stackCard(s,x){
   const action=(icon,label,col,attr,disabled)=>'<button type="button" class="edbtn" style="--c:'+col+'" '+attr+'="'+key+'"'+(disabled?' disabled':'')+'>'+ic(icon)+'<span>'+label+'</span></button>';
   const primary=x.w==="freezer"?action("fridge","To fridge","var(--k-fridge)","data-fthaw"):
     !v.canFreeze&&!v.bad&&x.free>0?action("plus","Add to meal","var(--warn)","data-fadd"):action("snow","Freeze","var(--k-freezer)","data-ffrz",!v.canFreeze);
-  return '<div class="fcard cooked-card days" data-fcard="'+key+'" data-storage="'+x.w+'" data-expired="'+v.expired+'" style="--profile:'+profile+';--acc:'+profile+';--c:var(--i-'+P.icOf(lot.r)+')" aria-expanded="false">'+
+  return '<div class="fcard cooked-card days" data-fcard="'+key+'" data-storage="'+x.w+'" data-expired="'+v.expired+'" data-pill-warnings="'+!!v.warnings.length+'" data-pill-planned="'+!!v.plans.length+'" data-pill-freezing="'+(v.phase?.type==='freezing')+'" data-pill-thawing="'+(v.phase?.type==='thawing')+'" style="--profile:'+profile+';--acc:'+profile+';--c:var(--i-'+P.icOf(lot.r)+')" aria-expanded="false">'+
     '<div class="row cooked-row'+(v.warnings.length?' has-warning':'')+(v.bad?' has-bad':'')+'">'+
     '<div class="meal '+(x.w==="fridge"?"fromfr":"fromfz")+(v.bad?" srcbad":v.warnings.length?" srcwarn":"")+'"><span class="bub">'+ic(P.icOf(lot.r))+'</span><span class="tx">'+
     '<b>'+esc(name)+badge+'</b><span class="cmeta">'+esc("Made "+dShort(lot.made)+" · "+plural(x.now,"portion"))+'</span>'+
@@ -4977,7 +4977,7 @@ function renderShop(){
 /* Expand all / Collapse all: the shopping groups, or on the Cooked tab the fridge and freezer */
 const CF=["cf-fridge","cf-freezer"],allShut=ck=>ck?CF.some(k=>shut.has(k)):SHOP_CATS.some(c=>shut.has(c.id));
 shopRoot.addEventListener("click",e=>{
-  const mode=e.target.closest("[data-foodmode]");if(mode){e.edDone=true;closeFoodActions(true);const [w,next]=mode.dataset.foodmode.split(":");const key=foodWho+":"+w,collapsed=shut.delete("cf-"+w);if(collapsed)saveShut();if(next!=="expired")foodModes[key]=!collapsed&&foodModes[key]===next?"details":next;renderFood();if(next==="expired"){const cards=[...$("shop-food").querySelectorAll(`[data-storage="${w}"][data-expired="true"]`)];if(cards.length)window.nphGlide(cards[0],()=>cards.forEach(el=>window.nphFlash(el,"var(--bad)")))}else $("shop-food").querySelectorAll(".cstatus").forEach(el=>el.classList.add("refresh"));return}
+  const mode=e.target.closest("[data-foodmode]");if(mode){e.edDone=true;closeFoodActions(true);const [w,next]=mode.dataset.foodmode.split(":"),colour=mode.style.getPropertyValue('--toggle').trim()||getComputedStyle(mode).getPropertyValue('--toggle').trim();const key=foodWho+":"+w,collapsed=shut.delete("cf-"+w);if(collapsed)saveShut();if(next!=="expired")foodModes[key]=!collapsed&&foodModes[key]===next?"details":next;renderFood();if(next==='expired'||foodModes[key]===next){const flag=next==='expired'?'data-expired':'data-pill-'+next,cards=[...$("shop-food").querySelectorAll(`[data-storage="${w}"][${flag}="true"]`)];const flash=()=>cards.forEach(el=>window.nphFlash(el,colour));if(next==='expired'&&cards.length)window.nphGlide(cards[0],flash);else flash()}return}
   const fd=e.target.closest("[data-fdots]");if(fd){e.edDone=true;const card=fd.closest("[data-fcard]");card.classList.contains("open")?closeFoodActions():openFoodActions(card);return}
   const fcd=e.target.closest("[data-fcard]");if(fcd&&!e.target.closest("button")){e.edDone=true;closeFoodActions();return}
   if(e.target.closest(".ftile,.cooked-card .edbtn"))closeFoodActions();
