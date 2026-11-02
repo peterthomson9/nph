@@ -21,7 +21,7 @@ async def main():
     browser=await p.chromium.launch(executable_path=BROWSER)
     ctx=await context(browser);page=await ctx.new_page();errors=[]
     page.on('pageerror',lambda e:errors.append(str(e)))
-    await page.goto((APP/'index.html').as_uri());await page.wait_for_timeout(1400)
+    await page.goto((APP/'index.html').as_uri());await page.wait_for_function("typeof S!=='undefined'");await page.evaluate('NPH_STORE.flush()')
     await page.evaluate("()=>{"+(ROOT/'cooked-fixtures-297.js').read_text(encoding='utf-8')+"\nS.custom['test-custom']={name:'A & B <test>',cat:'cup'};S.stock['cu-test-custom']={qty:3,out:false};S.items['cu-test-custom']={name:'Long custom item'};S.notes['test-note']={pl:'lh',r:'s12',sec:'method',who:'P',text:'Keep <exact> & Unicode: é 🥕',at:Date.now()};S.favs['lh-s12']={N:true};saveLocal();}")
     await page.evaluate('openSettings()')
     async with page.expect_download() as info:await page.locator('[data-backup-save]').click()
@@ -31,23 +31,24 @@ async def main():
     assert 'nph-me' not in backup_path.read_text(encoding='utf-8')
     # Reject malformed, incompatible and tampered files without writing saved data.
     result=await page.evaluate("""async()=>{
-      const good=await makeBackup(),before=localStorage.getItem(LKEY),results=[];
+      const good=await makeBackup(),before=JSON.stringify(NPH_STORE.read()),results=[];
       for(const mutate of [f=>{f.formatVersion=99},f=>{delete f.payload.data.notes},f=>{f.payload.data.notes.bad={text:'tampered'}},f=>{f.payload.data.food.bad={who:'lh',mk:-1}},f=>{f.payload.data.notes.bad=JSON.parse('{"__proto__":{}}')}]){
         const f=structuredClone(good);mutate(f);let rejected=false;try{await parseBackup(JSON.stringify(f))}catch(e){rejected=true}results.push(rejected);
       }
       let badJSON=false;try{await parseBackup('{')}catch(e){badJSON=true}
-      return {rejected:results,badJSON,unchanged:before===localStorage.getItem(LKEY)};
+      return {rejected:results,badJSON,unchanged:before===JSON.stringify(NPH_STORE.read())};
     }""")
     assert all(result['rejected']) and result['badJSON'] and result['unchanged'],result
     # Quota failure must preserve the original live dataset and in-memory state.
     result=await page.evaluate("""async()=>{
-      const f=await makeBackup(),before=localStorage.getItem(LKEY),memory=JSON.stringify(S),original=Storage.prototype.setItem;
-      Storage.prototype.setItem=function(k,v){if(k===RECOVERY_KEY)throw new DOMException('Full','QuotaExceededError');return original.call(this,k,v)};
-      let rejected=false;try{await applyBackup(f)}catch(e){rejected=e.name==='QuotaExceededError'}finally{Storage.prototype.setItem=original}
-      return rejected&&before===localStorage.getItem(LKEY)&&memory===JSON.stringify(S);
+      const f=await makeBackup(),before=JSON.stringify(NPH_STORE.read()),memory=JSON.stringify(S),original=IDBObjectStore.prototype.put;
+      IDBObjectStore.prototype.put=function(...args){if(this.name==='state')throw new DOMException('Full','QuotaExceededError');return original.apply(this,args)};
+      let rejected=false;try{await applyBackup(f)}catch(e){rejected=e.name==='QuotaExceededError'}finally{IDBObjectStore.prototype.put=original}
+      return rejected&&before===JSON.stringify(NPH_STORE.read())&&memory===JSON.stringify(S);
     }""")
     assert result
-    result=await page.evaluate("""async()=>{const f=await makeBackup(),before=localStorage.getItem(LKEY);db={};let rejected=false;try{await applyBackup(f)}catch(e){rejected=true}finally{db=null}return rejected&&before===localStorage.getItem(LKEY)}""")
+    await page.evaluate('NPH_STORE.save(S)')
+    result=await page.evaluate("""async()=>{const f=await makeBackup(),before=JSON.stringify(NPH_STORE.read());db={};let rejected=false;try{await applyBackup(f)}catch(e){rejected=true}finally{db=null}return rejected&&before===JSON.stringify(NPH_STORE.read())}""")
     assert result
     # Backwards compatibility: a real saved v2.100 file is accepted by v2.102.
     legacy_text=(ROOT/'fixtures/backups/v1-2.100.json').read_text(encoding='utf-8')
@@ -58,12 +59,13 @@ async def main():
     assert parsed==legacy
     compatibility=await page.evaluate('async()=>{const f=await makeBackup();f.payload.appVersion="999.0";f.sha256=await backupDigest(f.payload);return (await parseBackup(JSON.stringify(f))).payload.appVersion}')
     assert compatibility=='999.0' # app release number alone never determines compatibility
-    future=await page.evaluate('async()=>{const f=await makeBackup(),before=localStorage.getItem(LKEY);f.payload.dataSchema=999;f.sha256=await backupDigest(f.payload);try{await parseBackup(JSON.stringify(f));return false}catch(e){return before===localStorage.getItem(LKEY)}}')
+    future=await page.evaluate('async()=>{const f=await makeBackup(),before=JSON.stringify(NPH_STORE.read());f.payload.dataSchema=999;f.sha256=await backupDigest(f.payload);try{await parseBackup(JSON.stringify(f));return false}catch(e){return before===JSON.stringify(NPH_STORE.read())}}')
     assert future
     # Restore into a fresh phone context, through the real file input and confirmation.
     fresh=await context(browser,'light');target=await fresh.new_page();target.on('pageerror',lambda e:errors.append(str(e)))
-    await target.goto((APP/'index.html').as_uri());await target.wait_for_timeout(1400)
+    await target.goto((APP/'index.html').as_uri());await target.wait_for_function("typeof S!=='undefined'");await target.evaluate('NPH_STORE.flush()')
     await target.evaluate("()=>{S.notes['previous']={text:'Recovery sentinel'};saveLocal();openSettings()}")
+    await target.evaluate('NPH_STORE.flush()')
     previous=await target.evaluate('JSON.stringify(S)')
     backup_path=ROOT/'fixtures/backups/v1-2.100.json'
     expected=legacy['payload']['data']
@@ -75,17 +77,18 @@ async def main():
     assert await target.evaluate('JSON.stringify(S)')==previous
     await target.locator('#backup-file').set_input_files(backup_path)
     async with target.expect_navigation():await target.locator('[data-backup-confirm]').click()
-    await target.wait_for_timeout(300)
-    assert json.loads(await target.evaluate('window.initialSaved'))==expected
+    await target.wait_for_function("typeof S!=='undefined'")
+    assert await target.evaluate('NPH_STORE.initial')==expected
     assert await target.evaluate("localStorage.getItem('nph-me')")=='N'
     assert await target.evaluate("localStorage.getItem('nph-theme')")=='light'
-    recovery=await target.evaluate("JSON.parse(localStorage.getItem(RECOVERY_KEY))")
-    assert recovery['payload']['data']==json.loads(previous)
-    # Recover the previous dataset through the same guarded restore path.
-    await target.evaluate('openSettings()');await target.locator('[data-backup-recovery]').click()
+    snapshot_id=await target.evaluate("NPH_STORE.snapshots.find(s=>s.reason==='Before restoring data').id")
+    recovery=await target.evaluate('async id=>await NPH_STORE.getSnapshot(id)',snapshot_id)
+    assert recovery['data']==json.loads(previous)
+    await target.evaluate('openSettings()');await target.locator('[data-storage-recovery]').click()
+    await target.locator('[data-snapshot-review="'+snapshot_id+'"]').click()
     async with target.expect_navigation():await target.locator('[data-backup-confirm]').click()
-    await target.wait_for_timeout(300)
-    assert json.loads(await target.evaluate('window.initialSaved'))==json.loads(previous)
+    await target.wait_for_function("typeof S!=='undefined'")
+    assert await target.evaluate('NPH_STORE.initial')==json.loads(previous)
     assert not errors,errors
     await ctx.close();await fresh.close()
     # Matched before/after and expanded confirmation, phone widths and both themes.
@@ -93,7 +96,7 @@ async def main():
       for width in [400,320]:
         for version in ['after']:
           ctx=await context(browser,theme,width);pg=await ctx.new_page();pg.on('pageerror',lambda e:errors.append(str(e)))
-          await pg.goto((APP/'index.html').as_uri());await pg.wait_for_timeout(1100);await pg.evaluate('openSettings()')
+          await pg.goto((APP/'index.html').as_uri());await pg.wait_for_function("typeof S!=='undefined'");await pg.evaluate('openSettings()')
           await pg.wait_for_timeout(350)
           if version=='after':
             await pg.locator('[data-backup-save]').focus()

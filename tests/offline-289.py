@@ -16,9 +16,9 @@ async def main():
    page=await ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
    await page.goto(f'http://127.0.0.1:{server.server_address[1]}/index.html')
    await page.evaluate("async()=>{await navigator.serviceWorker.register('./sw.js');await navigator.serviceWorker.ready}")
-   await page.reload();await page.wait_for_timeout(400)
-   assert await page.evaluate('NPH_V')=='2.103'
-   assert 'nph-2.103' in await page.evaluate('caches.keys()')
+   await page.reload();await page.wait_for_function("typeof S!=='undefined'");await page.evaluate('NPH_STORE.flush()')
+   assert await page.evaluate('NPH_V')=='2.104'
+   assert 'nph-2.104' in await page.evaluate('caches.keys()')
    assert await page.locator('head link[rel="manifest"]').get_attribute('href')=='./manifest.webmanifest'
    manifest=json.loads((ROOT/'manifest.webmanifest').read_text(encoding='utf-8'))
    assert manifest['id']=='./' and manifest['start_url']=='./#np' and manifest['scope']=='./'
@@ -26,14 +26,14 @@ async def main():
    for icon in icons:
     path,digest=icon['src'].split('?v=')
     assert hashlib.sha256((ROOT/path).read_bytes()).hexdigest().startswith(digest)
-   await ctx.set_offline(True);await page.reload();await page.wait_for_timeout(400)
-   assert await page.evaluate('NPH_V')=='2.103'
+   await ctx.set_offline(True);await page.reload();await page.wait_for_function("typeof S!=='undefined'");await page.evaluate('NPH_STORE.flush()')
+   assert await page.evaluate('NPH_V')=='2.104'
    for icon in icons:
     digest=await page.evaluate("""async path=>{const r=await fetch(path);if(!r.ok)throw Error('Icon unavailable');return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await r.arrayBuffer())),b=>b.toString(16).padStart(2,'0')).join('')}""",icon['src'])
     assert digest.startswith(icon['src'].split('?v=')[1])
    assert await page.evaluate('Object.keys(PLANNERS.lh.R).length')==40
    assert not errors,errors
-   print(json.dumps({'release':'2.103','cacheUpdated':True,'offlineReload':True,'recipes':40,'pageErrors':0}))
+   print(json.dumps({'release':'2.104','cacheUpdated':True,'offlineReload':True,'recipes':40,'pageErrors':0}))
    await browser.close()
  finally: server.shutdown();server.server_close()
 asyncio.run(main())

@@ -24,7 +24,7 @@ async def main(js,w=400):
              "class FD extends RD{constructor(...a){if(!a.length)super(RD.now()+off);else super(...a)}static now(){return RD.now()+off}}window.Date=FD}")
     await ctx.add_init_script(init)
     pg=await ctx.new_page();errs=[];pg.on("pageerror",lambda e:errs.append(str(e)))
-    await pg.goto(F);await pg.wait_for_timeout(1400)
+    await pg.goto(F);await pg.wait_for_function("typeof S!=='undefined'");await pg.evaluate('NPH_STORE.flush()')
     if os.environ.get("FIXTURE"):
       await pg.evaluate("()=>{"+pathlib.Path(os.environ["FIXTURE"]).read_text(encoding="utf-8")+"}")
       await pg.wait_for_timeout(80)

@@ -3,3 +3,4 @@ tests/*.png
 
 tests/screenshots/
 tests/roundtrip-backup.json
+tests/__pycache__/

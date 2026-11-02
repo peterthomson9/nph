@@ -1,8 +1,10 @@
 # NPH backups
 
+From v2.104, household saves and up to 12 automatic recovery copies live in IndexedDB. **Recovery copies → Review copy** replaces the earlier single recovery button. Backups downloaded to files remain format 1/schema 1 and retain the same household data. See `storage.md` for migration and retention. The original localStorage save remains as migration history, not the current saved state.
+
 In Settings, choose **Save backup** and keep the downloaded JSON file in Downloads or another private folder. This includes plans, stock, cooked food, custom items, item changes, notes and favourites. It does not include the app's built-in recipe catalogue, phone identity, appearance or Undo history.
 
-To restore, choose **Restore backup**, select the file and check its date/counts. **Replace saved data** replaces this phone's household data and reloads the app. **Cancel** leaves it unchanged. After a restore, **Recover data from before the last restore** can put the preceding dataset back; another confirmed restore replaces that recovery copy.
+To restore, choose **Restore backup**, select the file and check its date/counts. **Replace saved data** replaces this phone's household data and reloads the app. **Cancel** leaves it unchanged. In **Recovery copies**, choose **Review copy** to recover an earlier dataset; up to 12 dated copies are retained.
 
 The external JSON file survives clearing browser data if the file itself is retained. The internal recovery copy does not. This release supports files up to 8 MB. If a recovery copy cannot be stored, replacement is stopped. Local restore is unavailable while connected to shared storage.
 

@@ -9,12 +9,12 @@ BROWSER=os.environ.get('BROWSER_EXE',r'C:\Users\thoms\AppData\Local\BraveSoftwar
 class Quiet(http.server.SimpleHTTPRequestHandler):
     def log_message(self,*args):pass
     def end_headers(self):self.send_header('Cache-Control','no-store');super().end_headers()
-def deploy(target,version='2.103',broken=False):
+def deploy(target,version='2.104',broken=False):
     shutil.copytree(SOURCE/'icons',target/'icons',dirs_exist_ok=True)
     for name in ['index.html','sw.js','release.json','manifest.webmanifest']:shutil.copy2(SOURCE/name,target/name)
     for file in ['index.html','sw.js','release.json']:
         path=target/file
-        path.write_text(path.read_text(encoding='utf-8').replace('2.103',version),encoding='utf-8')
+        path.write_text(path.read_text(encoding='utf-8').replace('2.104',version),encoding='utf-8')
     if broken:(target/'release.json').write_text(json.dumps({'version':'wrong','updateProtocol':1}),encoding='utf-8')
 async def main():
  with tempfile.TemporaryDirectory(prefix='nph-update-tests-') as folder:
@@ -30,22 +30,23 @@ async def main():
       await ctx.add_init_script("if(!localStorage.getItem('nph-me'))localStorage.setItem('nph-me','P');if(!localStorage.getItem('nph-theme'))localStorage.setItem('nph-theme','"+theme+"');window.initialSaved=localStorage.getItem('nph-kitchen-v1');")
       return ctx
     ctx=await new_context();page=await ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
-    await page.goto(url);await page.wait_for_function("UPD.reg && UPD.reg.active && !UPD.checking")
-    await page.evaluate('navigator.serviceWorker.ready');await page.reload();await page.wait_for_function("!UPD.checking")
-    assert await page.evaluate('NPH_V')=='2.103'
+    await page.goto(url);await page.wait_for_function("typeof UPD!=='undefined' && UPD.reg && UPD.reg.active && !UPD.checking")
+    await page.evaluate('navigator.serviceWorker.ready');await page.reload();await page.wait_for_function("typeof UPD!=='undefined' && !UPD.checking")
+    assert await page.evaluate('NPH_V')=='2.104'
     print('PASS: first install',flush=True)
     await page.evaluate("()=>{"+(SOURCE/'tests/cooked-fixtures-297.js').read_text(encoding='utf-8')+"\nS.custom.test={name:'Test custom item',cat:'cup'};S.stock.test={out:false,qty:3};S.items.test={name:'Test item'};S.favs.test={P:true};S.notes['upgrade-test']={text:'Keep IDs, 🥕 and <text>',who:'P'};saveLocal();localStorage.setItem(RECOVERY_KEY,'recovery sentinel');caches.open('other-app-cache').then(c=>c.put('/unrelated',new Response('keep')))}")
+    await page.evaluate('NPH_STORE.flush()')
     saved=await page.evaluate('JSON.stringify(S)')
     # A partial deployment fails installation and leaves the previous app/cache usable.
-    deploy(webroot,'2.104',broken=True)
+    deploy(webroot,'2.105',broken=True)
     await page.evaluate('checkUpdates(true)')
-    assert await page.evaluate('NPH_V')=='2.103'
+    assert await page.evaluate('NPH_V')=='2.104'
     assert not await page.evaluate('!!UPD.reg.waiting')
-    assert 'nph-2.103' in await page.evaluate('caches.keys()')
+    assert 'nph-2.104' in await page.evaluate('caches.keys()')
     print('PASS: incomplete release rejected',flush=True)
-    deploy(webroot,'2.104')
-    await page.evaluate('checkUpdates(true)');await page.wait_for_function("UPD.ready==='2.104'")
-    assert await page.evaluate('NPH_V')=='2.103' # never reload just because an update arrived
+    deploy(webroot,'2.105')
+    await page.evaluate('checkUpdates(true)');await page.wait_for_function("UPD.ready==='2.105'")
+    assert await page.evaluate('NPH_V')=='2.104' # never reload just because an update arrived
     await page.locator('#app-update').wait_for(state='visible')
     await page.locator('[data-update-view]').click()
     assert await page.locator('#update-section').is_visible()
@@ -53,28 +54,37 @@ async def main():
     await page.evaluate('editing=true;applyUpdate()');assert await page.evaluate('!UPD.requested')
     await page.evaluate("editing=false;pend.set('dummy',{col:'notes',id:'dummy',data:{}});applyUpdate()")
     assert await page.evaluate('!UPD.requested');await page.evaluate('pend.clear()')
-    denied=await page.evaluate("""async()=>{const old=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){if(k===LKEY)throw new DOMException('full','QuotaExceededError');return old.call(this,k,v)};try{await applyUpdate();return !UPD.requested&&UPD.status.includes('storage')}finally{Storage.prototype.setItem=old}}""")
+    denied=await page.evaluate("""async()=>{S.notes["quota-test"]={text:"Not yet saved"};const old=IDBObjectStore.prototype.put;IDBObjectStore.prototype.put=function(...args){if(this.name==='state')throw new DOMException('full','QuotaExceededError');return old.apply(this,args)};try{await applyUpdate();return !UPD.requested&&UPD.status.includes('storage')}finally{IDBObjectStore.prototype.put=old}}""")
     assert denied
+    await page.evaluate("NPH_STORE.save(S)")
+    saved=await page.evaluate("JSON.stringify(S)")
     # Another tab must retain unsaved edits when the first tab activates the release.
     second=await ctx.new_page();second.on('pageerror',lambda e:errors.append(str(e)))
-    await second.goto(url+'#shop');await second.wait_for_function("UPD.reg && !UPD.checking")
+    await second.goto(url+'#shop');await second.wait_for_function("typeof UPD!=='undefined' && UPD.reg && !UPD.checking")
+    print('Two-window revisions:',await page.evaluate('NPH_STORE.revision'),await second.evaluate('NPH_STORE.revision'),flush=True)
+    # Opening the fixture in a real second app can materialise normal derived food.
+    # Reload its latest committed state before asking the first tab to update;
+    # stale-write refusal is tested separately in storage.py.
+    await page.reload();await page.wait_for_function("typeof UPD!=='undefined' && UPD.reg && !UPD.checking")
+    await page.evaluate('NPH_STORE.flush()');saved=await page.evaluate('JSON.stringify(S)')
+    await page.evaluate('openSettings()')
     await second.evaluate("editing=true;window.editSentinel='unsaved text'")
     async with page.expect_navigation():await page.locator('[data-update-apply]').click()
-    await page.wait_for_function("typeof UPD!=='undefined' && NPH_V==='2.104' && !UPD.checking")
-    assert await page.evaluate('window.initialSaved')==saved
+    await page.wait_for_function("typeof UPD!=='undefined' && NPH_V==='2.105' && !UPD.checking")
+    assert json.dumps(await page.evaluate('NPH_STORE.initial'),sort_keys=True)==json.dumps(json.loads(saved),sort_keys=True)
     assert await page.evaluate("localStorage.getItem(RECOVERY_KEY)")=='recovery sentinel'
     assert await page.evaluate("localStorage.getItem('nph-me')")=='P'
     await second.wait_for_function('UPD.reloadReady')
-    assert await second.evaluate("NPH_V==='2.103'&&editing&&window.editSentinel==='unsaved text'")
+    assert await second.evaluate("NPH_V==='2.104'&&editing&&window.editSentinel==='unsaved text'")
     assert 'other-app-cache' in await page.evaluate('caches.keys()')
     print('PASS: modern activation, save guards, other-tab edit preservation',flush=True)
     # An already downloaded update can be activated while offline.
-    deploy(webroot,'2.105');await page.evaluate('checkUpdates(true)');await page.wait_for_function("UPD.ready==='2.105'")
+    deploy(webroot,'2.106');await page.evaluate('checkUpdates(true)');await page.wait_for_function("UPD.ready==='2.106'")
     await ctx.set_offline(True);await page.evaluate('checkUpdates(true)')
     assert await page.evaluate('UPD.status.includes("ready")')
     await page.evaluate('openSettings()')
     async with page.expect_navigation():await page.locator('[data-update-apply]').click()
-    await page.wait_for_function("typeof UPD!=='undefined' && NPH_V==='2.105' && !UPD.checking")
+    await page.wait_for_function("typeof UPD!=='undefined' && NPH_V==='2.106' && !UPD.checking")
     assert await page.evaluate("S.notes['upgrade-test'].text")=='Keep IDs, 🥕 and <text>'
     await page.evaluate('checkUpdates(true)');assert await page.evaluate('UPD.status.includes("Offline")'),await page.evaluate('({status:UPD.status,ready:UPD.ready,reloadReady:UPD.reloadReady,online:navigator.onLine,checking:UPD.checking})')
     await ctx.close()
@@ -90,7 +100,7 @@ async def main():
     await old.evaluate("()=>{S.notes['legacy-sentinel']={text:'Old phone data'};saveLocal();localStorage.setItem('legacy-pref','keep')}")
     deploy(webroot)
     await old.goto(url+'?nph-update=1#shop')
-    await old.wait_for_function("typeof UPD!=='undefined'&&NPH_V==='2.103'",timeout=30000)
+    await old.wait_for_function("typeof UPD!=='undefined'&&NPH_V==='2.104'",timeout=30000)
     assert await old.evaluate("S.notes['legacy-sentinel'].text")=='Old phone data'
     assert await old.evaluate("localStorage.getItem('legacy-pref')")=='keep'
     assert 'nph-update' not in old.url
@@ -103,10 +113,10 @@ async def main():
       for name in ['after']:
        ctx=await new_context(theme,width);pg=await ctx.new_page();pg.on('pageerror',lambda e:errors.append(str(e)))
        if name=='before':await pg.goto((ROOT/'before/index.html').as_uri())
-       else:await pg.goto(url);await pg.wait_for_function('UPD.reg && !UPD.checking')
+       else:await pg.goto(url);await pg.wait_for_function("typeof UPD!=='undefined' && UPD.reg && !UPD.checking")
        await pg.evaluate('openSettings()');await pg.wait_for_timeout(350)
        if name=='after':
-        await pg.evaluate("UPD.ready='2.104';UPD.status='v2.104 is ready. Your saved data will be kept.';paintUpdate()")
+        await pg.evaluate("UPD.ready='2.105';UPD.status='v2.105 is ready. Your saved data will be kept.';paintUpdate()")
         await pg.locator('[data-update-apply]').focus();await pg.locator('#update-section').scroll_into_view_if_needed()
        else:await pg.locator('[data-backup-save]').scroll_into_view_if_needed()
        assert await pg.evaluate('document.documentElement.scrollWidth<=innerWidth+1')

@@ -1817,7 +1817,7 @@ h1,h2,h3{font-weight:700;text-wrap:wrap}
 
 <aside id="app-update" hidden aria-label="App update"><span>Update available</span><button class="todaybtn" data-update-view>View update</button><button class="todaybtn" data-update-later>Later</button></aside><dialog id="dlg"><div class="card" id="card"></div></dialog>
 <div class="toast" id="toast" role="status" hidden></div>
-<script>
+<script type="text/nph-app" id="nph-main">
 /* ================= N & P data ================= */
 /* [key, name, shopping category, usual pack, usual qty] */
 const PN_ING=[
@@ -2337,8 +2337,9 @@ const S={stock:{},custom:{},pn:{},lh:{},food:{},notes:{},items:{},favs:{}};
 const COLS=Object.keys(S);
 let db=null, syncMode="starting", readOnly=false, dragging=false, editing=false, needRender=false;
 const LKEY="nph-kitchen-v1";
-try{const v=JSON.parse(localStorage.getItem(LKEY)||"null");if(v)COLS.forEach(c=>{if(v[c]&&typeof v[c]==="object")S[c]=v[c]})}catch(e){}
-function saveLocal(){try{localStorage.setItem(LKEY,JSON.stringify(S))}catch(e){}}
+COLS.forEach(c=>S[c]=JSON.parse(JSON.stringify(NPH_STORE.initial[c])));
+function saveLocal(){return NPH_STORE.save(S).catch(error=>{storageChanged();throw error})}
+
 
 const pend=new Map(); let working=false;
 /* undo / redo: every change to the plans and stored food made by one tap is one step */
@@ -2372,7 +2373,7 @@ function put(col,id,data){
   histRecord(col,id,clone(S[col][id]),clone(data));
   if(data===null)delete S[col][id];else S[col][id]=data;
   if(id.startsWith("sh-"))SHV++;else if((col==="pn"||col==="lh")&&!shMoving&&/^(x-|fz-m|sp-)/.test(id))SHNEED[col]=histOff?(SHNEED[col]||"q"):"a";
-  saveLocal();schedule();
+  saveLocal().catch(()=>{});schedule();
   if(db){const p=col+"/"+id;pend.delete(p);pend.set(p,{col,id,data,tries:0});work()}
 }
 async function work(){
@@ -2394,7 +2395,7 @@ async function work(){
 let rafId=0;
 function schedule(){if(dragging||editing){needRender=true;return}if(rafId)return;rafId=requestAnimationFrame(()=>{rafId=0;renderAll()})}
 function setSync(){
-  const [cls,txt,sh]=readOnly?["ro","View only","View only"]:syncMode==="live"?["live","Shared · live","Live"]:syncMode==="starting"?["","Connecting…","…"]:["local","Saved on this phone only","This phone"];
+  const [cls,txt,sh]=readOnly?["ro","View only","View only"]:syncMode==="live"?["live","Shared · live","Live"]:syncMode==="starting"?["","Connecting…","…"]:NPH_STORE.error?["ro","Changes not saved","Not saved"]:NPH_STORE.pending?["","Saving on this phone…","Saving…"]:["local","Saved on this phone only","This phone"];
   document.querySelectorAll("[data-sync]").forEach(el=>{el.className="sync "+cls;el.innerHTML=`<i></i><span class="sl">${txt}</span><span class="ss">${sh}</span>`;el.title=syncMode==="local"?"Open the app from its claude.ai link to share changes with each other":""});
 }
 function connect(){
@@ -2406,7 +2407,7 @@ function connect(){
       d.collection(col).onSnapshot(snap=>{
         const m={};snap.docs.forEach(doc=>{if(doc.exists)m[doc.id]=doc.data()});
         pend.forEach(p=>{if(p.col===col){if(p.data===null)delete m[p.id];else m[p.id]=p.data}});
-        S[col]=m;saveLocal();schedule();
+        S[col]=m;saveLocal().catch(()=>{});schedule();
       },err=>{console.warn(err);if(err&&err.code==="revoked"){db=null;syncMode="local";setSync()}});
     });
     work();
@@ -2545,7 +2546,7 @@ function setQty(k,q){const cur=stockOf(k);put("stock",k,{...cur,out:cur.out!==fa
 
 /* ================= Meal planner (one engine, two pages) ================= */
 const PLANNERS={};
-const NPH_V=window.NPH_VERSION||"2.103";
+const NPH_V=window.NPH_VERSION||"2.104";
 function Planner(cfg){
   const id=cfg.id, R=cfg.R, T=cfg.T, IC=cfg.IC, BLK=cfg.BLK, ANCHOR=cfg.anchor;
   const P={id,cfg};
@@ -5240,7 +5241,7 @@ async function parseBackup(text){
 }
 function backupLocalOnly(){if(db||syncMode!=="local"||pend.size||working||readOnly)throw Error("Restore is available only in phone-only mode. Shared data has not been changed.")}
 function backupStatus(message,error=false){const el=$("backup-status");if(el){el.textContent=message;el.style.color=error?"var(--bad)":"var(--muted)"}}
-function backupSection(){return `<section class="sgrp"><h4>Backups</h4><div class="srow"><div class="stx"><b>Keep a copy outside the app</b><small>Save plans, stock, cooked food and notes to a file on your phone.</small></div><div class="acts two"><button class="todaybtn" data-backup-save>Save backup</button><button class="todaybtn" data-backup-open>Restore backup</button></div><input type="file" id="backup-file" accept=".json,application/json" hidden><small id="backup-status" role="status" aria-live="polite"></small>${localStorage.getItem(RECOVERY_KEY)?'<button class="todaybtn" data-backup-recovery>Recover data from before the last restore</button>':""}</div></section>`}
+function backupSection(){return `<section class="sgrp"><h4>Backups</h4><div class="srow"><div class="stx"><b>Keep a copy outside the app</b><small>Save plans, stock, cooked food and notes to a file on your phone.</small></div><div class="acts two"><button class="todaybtn" data-backup-save>Save backup</button><button class="todaybtn" data-backup-open>Restore backup</button></div><input type="file" id="backup-file" accept=".json,application/json" hidden><small id="backup-status" role="status" aria-live="polite"></small><p class="snote" id="storage-status" role="status">${NPH_STORE.error?"Changes have not saved. Keep this window open and save a backup.":"Recovery copies are kept automatically on this phone."}</p><button class="todaybtn" data-storage-recovery>Recovery copies</button></div></section>`}
 function showBackupRestore(file,recovery=false){
   backupCandidate=file;
   const p=file.payload,date=new Date(p.createdAt).toLocaleString("en-GB");
@@ -5248,18 +5249,11 @@ function showBackupRestore(file,recovery=false){
   $("card").innerHTML=`<header><div class="ht"><h2>${recovery?"Recover saved data":"Restore backup"}</h2></div><button class="close" aria-label="Close">×</button></header><div class="sets"><section class="sgrp"><div class="srow"><div class="stx"><b>${esc(date)}</b><small>NPH v${esc(p.appVersion)}</small></div><p class="snote">${esc(backupCounts(p.data))}</p><p class="stwarn">This replaces all saved app data on this phone. Your phone identity and appearance stay the same. A recovery copy is kept before replacing anything.</p><p class="snote" id="backup-status" role="status" aria-live="polite"></p><div class="acts two"><button class="todaybtn warnb" data-backup-confirm>Replace saved data</button><button class="todaybtn" data-backup-cancel>Cancel</button></div></div></section></div>`;
 }
 async function applyBackup(file){
-  backupLocalOnly();
-  const oldText=localStorage.getItem(LKEY);
-  // Revalidate at the point of use, and take a fresh snapshot after the confirmation.
-  const verified=await parseBackup(JSON.stringify(file)),previous=await makeBackup();
-  backupLocalOnly();
-  const next=JSON.stringify(migrateBackupData(verified.payload));
-  localStorage.setItem(RECOVERY_KEY,JSON.stringify(previous));
-  if(localStorage.getItem(RECOVERY_KEY)!==JSON.stringify(previous))throw Error("The recovery copy could not be saved. Nothing has changed.");
-  if(localStorage.getItem(LKEY)!==oldText)throw Error("Data changed in another window. Please try restoring again.");
-  localStorage.setItem(LKEY,next);
-  // One localStorage write replaces every collection together; in-memory data changes on reload.
-  location.reload();
+  backupLocalOnly();const verified=await parseBackup(JSON.stringify(file));
+  await NPH_STORE.flush();backupLocalOnly();
+  readOnly=true;setSync();
+  try{await NPH_STORE.replace(migrateBackupData(verified.payload));location.reload()}
+  catch(error){readOnly=NPH_STORE.conflict;setSync();throw error}
 }
 document.addEventListener("click",async e=>{
   const button=e.target.closest("[data-backup-save],[data-backup-open],[data-backup-confirm],[data-backup-cancel],[data-backup-recovery]");
@@ -5302,7 +5296,10 @@ function workerVersion(worker){return new Promise((resolve,reject)=>{
 })}
 async function inspectUpdate(){
   const waiting=UPD.reg?.waiting;
-  if(waiting){UPD.ready=await workerVersion(waiting);UPD.reloadReady=false;if(UPD.ready)updateStatus(`v${UPD.ready} is ready. Your saved data will be kept.`);return}
+  if(waiting){
+    const version=await workerVersion(waiting);
+    if(UPD.reg.waiting===waiting&&waiting.state==="installed"&&version&&version!==NPH_V){UPD.ready=version;UPD.reloadReady=false;updateStatus(`v${UPD.ready} is ready. Your saved data will be kept.`);return}
+  }
   const active=await workerVersion(navigator.serviceWorker.controller||UPD.reg?.active);
   UPD.ready=null;UPD.reloadReady=!!active&&active!==NPH_V;
   if(UPD.reloadReady)updateStatus(`v${active} is ready. Your saved data will be kept.`);
@@ -5354,8 +5351,7 @@ async function applyUpdate(){
   if(UPD.requested)return;
   try{
     updateSafe();
-    const saved=JSON.stringify(S);localStorage.setItem(LKEY,saved);
-    if(localStorage.getItem(LKEY)!==saved)throw Error("Your changes could not be saved. The app has not updated.");
+    await NPH_STORE.save(S);await NPH_STORE.flush();updateSafe();
     if(UPD.reloadReady){location.reload();return}
     const worker=UPD.reg?.waiting;if(!worker)throw Error("Check for updates again before updating.");
     UPD.requested=true;updateStatus("Opening the new version…");
@@ -5363,8 +5359,13 @@ async function applyUpdate(){
     worker.postMessage("skipWaiting");
   }catch(error){updateStatus(error.name==="QuotaExceededError"?"Not enough phone storage to save changes. The app has not updated.":error.message);toast(UPD.status)}
 }
-if("serviceWorker" in navigator)navigator.serviceWorker.addEventListener("controllerchange",()=>{
-  if(UPD.requested){clearTimeout(UPD.timer);location.reload();return}
+if("serviceWorker" in navigator)navigator.serviceWorker.addEventListener("controllerchange",async()=>{
+  if(UPD.requested){
+    clearTimeout(UPD.timer);
+    try{await NPH_STORE.save(S);await NPH_STORE.flush();updateSafe();location.reload()}
+    catch(error){UPD.requested=false;UPD.ready=null;UPD.reloadReady=true;updateStatus(error.name==="QuotaExceededError"?"Changes could not be saved. Keep this window open and save a backup.":error.message);toast(UPD.status)}
+    return;
+  }
   inspectUpdate().catch(()=>{});
 });
 document.addEventListener("click",e=>{
@@ -5382,6 +5383,32 @@ setTimeout(()=>checkUpdates(),0);
 if(new URL(location.href).searchParams.has("nph-update")){
   const url=new URL(location.href);url.searchParams.delete("nph-update");history.replaceState(history.state,"",url);
 }
+
+function storageChanged(){
+  const store=NPH_STORE;
+  if(store.conflict)readOnly=true;
+  setSync();
+  const status=$("storage-status");if(status)status.textContent=store.error?"Changes have not saved. Keep this window open and save a backup.":store.pending?"Saving on this phone…":store.notice||"Recovery copies are kept automatically on this phone.";
+  if(store.error&&!store.error.shown){store.error.shown=true;toast(store.error.name==="QuotaExceededError"?"Phone storage is full. Keep this window open and save a backup.":store.error.message||"Changes could not be saved. Keep this window open and save a backup.")}
+  if(store.notice&&store.notice!==store.seenNotice){store.seenNotice=store.notice;toast(store.notice)}
+}
+NPH_STORE.onchange=storageChanged;
+if(NPH_STORE.notice)setTimeout(storageChanged,1200);
+function showRecoveryCopies(){
+  $("card").className="card setcard backupcard";
+  const copies=NPH_STORE.snapshots;
+  $("card").innerHTML=`<header><div class="ht"><h2>Recovery copies</h2></div><button class="close" aria-label="Close">×</button></header><div class="sets"><p class="snote">Choose a copy to review before replacing saved data. These copies stay on this phone; keep downloading backups too.</p>${copies.length?copies.map(s=>`<section class="sgrp"><div class="srow"><div class="stx"><b>${esc(new Date(s.createdAt).toLocaleString("en-GB"))}</b><small>${esc(s.reason)}</small></div><button class="todaybtn" data-snapshot-review="${esc(s.id)}">Review copy</button></div></section>`).join(""):'<p class="snote">No recovery copies yet.</p>'}<p class="snote" id="backup-status" role="status" aria-live="polite"></p><button class="todaybtn" data-backup-cancel>Back to Settings</button></div>`;
+  if(!$("dlg").open)$("dlg").showModal();
+}
+document.addEventListener("click",async e=>{
+  if(e.target.closest("[data-storage-recovery]")){await NPH_STORE.flush().catch(()=>{});showRecoveryCopies();return}
+  const review=e.target.closest("[data-snapshot-review]");if(!review||backupBusy)return;
+  try{
+    backupLocalOnly();const snapshot=await NPH_STORE.getSnapshot(review.dataset.snapshotReview);
+    const payload={appVersion:snapshot.appVersion,dataSchema:BACKUP_SCHEMA,createdAt:new Date(snapshot.createdAt).toISOString(),data:snapshot.data};
+    validateBackupData(payload.data);showBackupRestore({application:"NPH",formatVersion:BACKUP_FORMAT,payload,sha256:await backupDigest(payload)},true);
+  }catch(error){backupStatus(error.message,true)}
+});
 
 function drawSettings(){const lay=PN.layout();
   const row=(icn,t,sub,ctl,cls)=>`<div class="srow${cls?" "+cls:""}"><div class="shd"><span class="sic">${ic(icn)}</span><span class="stx"><b>${t}</b>${sub?`<small>${sub}</small>`:""}</span></div>${ctl}</div>`;
@@ -5530,6 +5557,134 @@ setInterval(dateTick,60000);
 renderAll();setSync();go(location.hash.slice(1)||"np");connect();
 setTimeout(()=>{if(!ME&&!$("dlg").open)openPhonePrompt()},900);
 updStick();requestAnimationFrame(()=>requestAnimationFrame(scrollToToday));setTimeout(scrollToToday,350);try{document.fonts.ready.then(()=>setTimeout(scrollToToday,0))}catch(_){}
+</script><script>
+/* IndexedDB bootstrap: run the app only after its saved state is loaded. */
+(async()=>{
+  const KEYS=["stock","custom","pn","lh","food","notes","items","favs"],LEGACY="nph-kitchen-v1",RECOVERY="nph-recovery-v1",MAX_COPIES=12;
+  const main=document.getElementById("nph-main"),version=main.textContent.match(/const NPH_V=window.NPH_VERSION\|\|"([^"]+)"/)[1];
+  try{document.documentElement.dataset.theme=localStorage.getItem("nph-theme")||"dark"}catch(_){document.documentElement.dataset.theme="dark"}
+  const copy=v=>JSON.parse(JSON.stringify(v)),empty=()=>Object.fromEntries(KEYS.map(k=>[k,{}]));
+  function valid(data){
+    if(!data||typeof data!=="object"||Array.isArray(data)||Object.keys(data).length!==KEYS.length||KEYS.some(k=>!data[k]||typeof data[k]!=="object"||Array.isArray(data[k])))throw Error("Saved data has an unsupported structure.");
+    return data;
+  }
+  const request=r=>new Promise((resolve,reject)=>{r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});
+  function complete(tx){return new Promise((resolve,reject)=>{tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error||Error("The save was cancelled."));tx.onerror=()=>{}})}
+  function open(){return new Promise((resolve,reject)=>{
+    const r=indexedDB.open("nph-local-v1",1),timer=setTimeout(()=>reject(Error("Phone storage is busy. Close other NPH windows and reload.")),8000);
+    r.onupgradeneeded=()=>{r.result.createObjectStore("state");r.result.createObjectStore("snapshots",{keyPath:"id"})};
+    r.onsuccess=()=>{clearTimeout(timer);resolve(r.result)};
+    r.onerror=()=>{clearTimeout(timer);reject(r.error)};
+    r.onblocked=()=>{clearTimeout(timer);reject(Error("Close other NPH windows and reload to open phone storage."))};
+  })}
+  try{
+    if(!("indexedDB" in window))throw Error("This browser cannot open NPH's phone storage.");
+    const db=await open(),initialTx=db.transaction(["state","snapshots"],"readonly"),initialDone=complete(initialTx);
+    let state=await request(initialTx.objectStore("state").get("current")),snapshots=await request(initialTx.objectStore("snapshots").getAll());await initialDone;
+    const rawLegacy=localStorage.getItem(LEGACY);
+    if(state){if(state.schema!==1)throw Error("This saved data needs a newer version of NPH.");valid(state.data)}
+    else{
+      const data=rawLegacy?valid(JSON.parse(rawLegacy)):empty(),now=Date.now();
+      state={schema:1,revision:1,data:copy(data),updatedAt:now,appVersion:version,legacyBaseline:rawLegacy,lastSnapshotAt:now};
+      const migration={id:"migration",createdAt:now,reason:"Before storage upgrade",appVersion:version,data:copy(data)};
+      const tx=db.transaction(["state","snapshots"],"readwrite"),done=complete(tx);
+      try{
+        // Check inside this transaction: another tab may have migrated while we opened.
+        const existing=await request(tx.objectStore("state").get("current"));
+        if(existing){state=existing;snapshots=await request(tx.objectStore("snapshots").getAll())}else{tx.objectStore("state").put(state,"current");tx.objectStore("snapshots").put(migration);snapshots.push(migration)}
+        await done;
+      }catch(error){try{tx.abort()}catch(_){}await done.catch(()=>{});throw error}
+      if(state.schema!==1)throw Error("This saved data needs a newer version of NPH.");valid(state.data);
+    }
+    const store={initial:copy(state.data),pending:0,error:null,conflict:false,revision:state.revision,snapshots:[],onchange:null,notice:null};
+    let tail=Promise.resolve(),localState=state;
+    function metadata(){store.snapshots=snapshots.slice().sort((a,b)=>b.createdAt-a.createdAt).map(({data,...meta})=>meta)}
+    metadata();
+    function notify(){store.onchange?.()}
+    function enqueue(task){
+      store.pending++;notify();
+      const job=tail.catch(()=>{}).then(task).then(value=>{store.error=null;return value},error=>{store.error=error;if(error.name==="NPHConflict")store.conflict=true;throw error}).finally(()=>{store.pending--;notify()});
+      tail=job;job.catch(()=>{});return job;
+    }
+    function conflict(){const e=Error("Another NPH window saved changes. Save a backup of this window, then reload before editing.");e.name="NPHConflict";return e}
+    async function write(data,reason=null,legacyBaseline=localState.legacyBaseline){
+      if(store.conflict)throw conflict();
+      valid(data);
+      const tx=db.transaction(["state","snapshots"],"readwrite"),done=complete(tx);
+      try{
+        const disk=await request(tx.objectStore("state").get("current"));
+        if(!disk||disk.revision!==localState.revision){tx.abort();await done.catch(()=>{});throw conflict()}
+        const text=JSON.stringify(data),changed=text!==JSON.stringify(disk.data),now=Date.now();
+        if(!changed&&!reason&&legacyBaseline===disk.legacyBaseline){await done;return}
+        let snapshot=null;
+        if(reason||changed&&now-(disk.lastSnapshotAt||0)>=30*60*1000){snapshot={id:crypto.randomUUID(),createdAt:now,reason:reason||"Automatic saved copy",appVersion:disk.appVersion||version,data:copy(disk.data)};tx.objectStore("snapshots").put(snapshot)}
+        const next={...disk,revision:disk.revision+1,data:copy(data),updatedAt:now,appVersion:version,legacyBaseline,lastSnapshotAt:snapshot?now:disk.lastSnapshotAt};
+        tx.objectStore("state").put(next,"current");
+        const all=await request(tx.objectStore("snapshots").getAll());
+        const keep=all.sort((a,b)=>b.createdAt-a.createdAt).slice(0,MAX_COPIES),ids=new Set(keep.map(s=>s.id));
+        for(const s of all)if(!ids.has(s.id))tx.objectStore("snapshots").delete(s.id);
+        await done;localState=next;store.revision=next.revision;snapshots=keep;metadata();
+      }catch(error){try{tx.abort()}catch(_){}await done.catch(()=>{});throw error}
+    }
+    store.save=data=>{const detached=copy(data);return enqueue(()=>write(detached))};
+    store.flush=async()=>{let pending;do{pending=tail;await pending}while(pending!==tail);if(store.error)throw store.error};
+    store.read=()=>copy(localState.data);
+    store.replace=data=>{const detached=copy(data);return enqueue(()=>write(detached,"Before restoring data"))};
+    store.getSnapshot=async id=>{
+      await store.flush();const tx=db.transaction("snapshots","readonly"),done=complete(tx),s=await request(tx.objectStore("snapshots").get(id));await done;
+      if(!s)throw Error("That recovery copy is no longer available.");valid(s.data);return copy(s);
+    };
+    async function captureLegacy(raw){
+      if(raw===localState.legacyBaseline||raw===null)return;
+      let data;try{data=valid(JSON.parse(raw))}catch(_){store.notice="An older window changed browser data that could not be read. The IndexedDB save is intact.";return}
+      await enqueue(async()=>{
+        const tx=db.transaction(["state","snapshots"],"readwrite"),done=complete(tx);
+        try{
+          const disk=await request(tx.objectStore("state").get("current"));
+          if(disk.revision!==localState.revision)throw conflict();
+          const s={id:crypto.randomUUID(),createdAt:Date.now(),reason:"Saved by an older app window",appVersion:version,data:copy(data)};
+          const next={...disk,revision:disk.revision+1,legacyBaseline:raw};
+          tx.objectStore("snapshots").put(s);tx.objectStore("state").put(next,"current");
+          const all=await request(tx.objectStore("snapshots").getAll()),keep=all.sort((a,b)=>b.createdAt-a.createdAt).slice(0,MAX_COPIES),ids=new Set(keep.map(s=>s.id));
+          for(const item of all)if(!ids.has(item.id))tx.objectStore("snapshots").delete(item.id);
+          await done;localState=next;store.revision=next.revision;snapshots=keep;metadata();
+          store.notice="An older NPH window saved different data. It is available in Recovery copies.";
+        }catch(error){try{tx.abort()}catch(_){}await done.catch(()=>{});throw error}
+      });
+    }
+    await captureLegacy(rawLegacy);
+    // Retain the old explicit restore backup as a recovery copy once, when compatible.
+    if(!snapshots.some(s=>s.id==="previous-restore")){
+      const raw=localStorage.getItem(RECOVERY);let file;try{file=JSON.parse(raw||"null")}catch(_){}
+      if(file?.application==="NPH"&&file.formatVersion===1&&file.payload?.dataSchema===1){
+        const digest=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(JSON.stringify(file.payload)))),b=>b.toString(16).padStart(2,"0")).join("");
+        if(digest===file.sha256){
+          const data=valid(file.payload.data),tx=db.transaction("snapshots","readwrite"),done=complete(tx);
+          const s={id:"previous-restore",createdAt:Date.parse(file.payload.createdAt)||Date.now(),reason:"Before an earlier restore",appVersion:file.payload.appVersion,data:copy(data)};
+          tx.objectStore("snapshots").put(s);
+          const all=await request(tx.objectStore("snapshots").getAll()),keep=all.sort((a,b)=>b.createdAt-a.createdAt).slice(0,MAX_COPIES),ids=new Set(keep.map(s=>s.id));
+          for(const item of all)if(!ids.has(item.id))tx.objectStore("snapshots").delete(item.id);
+          await done;snapshots=keep;metadata();
+        }
+      }
+    }
+    window.addEventListener("storage",e=>{if(e.key===LEGACY)captureLegacy(e.newValue).catch(error=>{store.error=error;notify()})});
+    db.onversionchange=()=>{db.close();store.conflict=true;store.error=Error("NPH storage changed in another window. Reload before editing.");notify()};
+    window.NPH_STORE=store;
+    const script=document.createElement("script");script.textContent=main.textContent;document.body.appendChild(script);
+  }catch(error){
+    // Do not boot an empty planner over unreadable or inaccessible saved data.
+    const box=document.createElement("section");box.className="card";
+    const heading=document.createElement("h2");heading.textContent="Saved data could not be opened";
+    const message=document.createElement("p");message.textContent=error.message+" Your existing saved data has not been replaced.";
+    const retry=document.createElement("button");retry.className="todaybtn";retry.textContent="Reload";retry.onclick=()=>location.reload();
+    if(error.name==="QuotaExceededError")message.textContent="Phone storage is full. Free some space, then reload. Your existing saved data has not been replaced.";
+    if(error instanceof SyntaxError)message.textContent="The earlier browser save could not be read. Your existing saved data has not been replaced.";
+    box.setAttribute("role","alert");box.style.cssText="position:fixed;inset:0;z-index:200;align-content:start;background:var(--bg);overflow:auto;border-radius:0;padding:24px 20px";
+    box.append(heading,message,retry);document.body.appendChild(box);window.NPH_STORAGE_BOOT_ERROR=error.message;
+  }
+})();
+
 </script>
 
 </body></html>

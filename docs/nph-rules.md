@@ -10,6 +10,14 @@ Use logo family B across installed app artwork and shared page icons. Follow the
 
 ## 0. Core rules (draft 30 Oct 2026, app v2.74, for P to check)
 
+### v2.104 approved durable storage and recovery (2 Nov 2026)
+
+- IndexedDB is the authoritative phone-local household store after a completed migration transaction. Load it before running app logic; migrate all eight collections and the pre-upgrade snapshot atomically, preserving the original localStorage text. An inaccessible, invalid or unsupported save must show a visible startup error rather than run an empty planner over it.
+- Keep record IDs, nested batch facts, portions and data schema 1 intact (C22/C23). Identity, theme and view preferences remain phone-local. Exported backup format 1/schema 1 stays compatible with the historical v2.100 file. C33 transient phone-local Undo and the future C34 shared-write policy are unchanged. Normal date-based app behaviour resumes after loading.
+- Serialize detached saves and report pending/failed transactions honestly. A stale window cannot overwrite a newer revision. Preserve a different save from an older localStorage app window as a recovery alternative and notify the user; do not silently merge or replace the authoritative state.
+- Keep at most 12 dated recovery copies. Capture the prior committed dataset before changes after a 30-minute interval and before explicit restores; include migration and compatible prior recovery data. Review a selected copy through the replacement confirmation. Recovery snapshots and replacement state commit in one transaction; failures roll both back. These internal copies do not replace external downloaded backups.
+- Temporarily block household edits during confirmed replacement. Flush durable saves before requesting an app update and again before its controller-change reload. A newly opened edit or failed save defers reload. Existing pending non-durable shared writes still block updates; this release does not configure Firebase or enable syncing.
+
 ### v2.103 installed logo refresh (2 Nov 2026)
 
 - Restore the page's stable `manifest.webmanifest` link and reference the already approved logo family B with content-versioned icon URLs. Keep manifest ID, start URL, scope and name stable so existing installed-app identity and saved data are preserved. Include matching browser/touch icons and cache the exact versioned assets for offline use.

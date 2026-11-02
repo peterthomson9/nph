@@ -602,3 +602,11 @@ Owner approved the real-app Settings Before/After and available-notice preview. 
 | 48 | 2 Nov 2026 | 2.102 | Approved app-update Settings and available notice | Disposable local Brave: before/after and notice views in light/dark at 320/400px, keyboard focus, wrapped actions/status, edit/sync/quota warnings and actual waiting/activation states. No horizontal overflow or page errors; upgrade data retention and offline reopening checked under /nph/. Only these affected surfaces were visually inspected. |
 
 | 49 | 2 Nov 2026 | 2.103 | Existing approved installed logo | Restored metadata references only: existing family-B pixels are unchanged. Manifest/browser/touch URLs use content versions; app ID, start URL and scope stay stable. Local offline checks verify exact icon bytes. No app-page layout changes; physical launcher refresh remains controlled by Chrome/Android and was not visually verified on a phone. |
+
+### Approved durable-storage recovery (v2.104, 2 November 2026)
+
+Owner approved the real-app Backups Before/After and Recovery copies chooser. Reuse the existing group, muted supporting text, full-width Recovery copies action, dated groups with Review copy and the existing replacement warning/confirmation. Startup storage errors use a visible themed panel with Reload; normal app-page layouts are unchanged.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 50 | 2 Nov 2026 | 2.104 | Approved recovery controls, chooser and storage status/error states | Disposable local Brave: Backups/recovery/confirmation in light/dark at 320/400px, wrapping, keyboard focus, destructive warning, readable startup errors and failed-save feedback. No horizontal overflow or page errors. Migration, atomic rollback, old backups, browser restart and late-save activation tested. Only these affected surfaces were visually inspected. |

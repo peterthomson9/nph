@@ -26,6 +26,8 @@ Before implementing or changing any logic, check it against the core rules (sect
 
 The approved v2.102 update controls check on launch, foreground and reconnection; downloaded releases wait for Update now. Do not clear browser data to update. Existing installations without update controls can transition using `https://peterthomson9.github.io/nph/?nph-update=1#np`; see `docs/updates.md`. Preserve the v1 backup reader and historical regression fixture when changing storage in future.
 
+From v2.104, IndexedDB is authoritative for household saves. Do not restore, clear, overwrite or read `nph-kitchen-v1` as if it were the current save: it is retained migration input and a source for detecting older-window writes. Await `NPH_STORE.flush()` at reload boundaries. See `docs/storage.md`; run `tests/storage.py` and `tests/storage-update-boundary.py` for storage or update changes. The app script is intentionally inert until the storage bootstrap injects it; browser tests must wait for `typeof S !== 'undefined'` before inspecting it. Never move startup back before storage readiness.
+
 ## Docs
 
 - `docs/nph-rules.md`: the rulebook. Section 0 "Core rules" is the source of truth for how meals, portions, storage, splits and swaps must behave; items marked **to build** / **to check** are agreed but not yet in the app. P has reviewed the core rules (C1–C34). Section 1 has Lil H's digestion and nutrition rules (LH, N, R1).
