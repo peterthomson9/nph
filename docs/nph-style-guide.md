@@ -600,3 +600,5 @@ Owner approved the real-app Settings Before/After and available-notice preview. 
 | Pass | Date | App version | Area | Result |
 |---|---|---|---|---|
 | 48 | 2 Nov 2026 | 2.102 | Approved app-update Settings and available notice | Disposable local Brave: before/after and notice views in light/dark at 320/400px, keyboard focus, wrapped actions/status, edit/sync/quota warnings and actual waiting/activation states. No horizontal overflow or page errors; upgrade data retention and offline reopening checked under /nph/. Only these affected surfaces were visually inspected. |
+
+| 49 | 2 Nov 2026 | 2.103 | Existing approved installed logo | Restored metadata references only: existing family-B pixels are unchanged. Manifest/browser/touch URLs use content versions; app ID, start URL and scope stay stable. Local offline checks verify exact icon bytes. No app-page layout changes; physical launcher refresh remains controlled by Chrome/Android and was not visually verified on a phone. |

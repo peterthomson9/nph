@@ -9,12 +9,12 @@ BROWSER=os.environ.get('BROWSER_EXE',r'C:\Users\thoms\AppData\Local\BraveSoftwar
 class Quiet(http.server.SimpleHTTPRequestHandler):
     def log_message(self,*args):pass
     def end_headers(self):self.send_header('Cache-Control','no-store');super().end_headers()
-def deploy(target,version='2.102',broken=False):
+def deploy(target,version='2.103',broken=False):
     shutil.copytree(SOURCE/'icons',target/'icons',dirs_exist_ok=True)
     for name in ['index.html','sw.js','release.json','manifest.webmanifest']:shutil.copy2(SOURCE/name,target/name)
     for file in ['index.html','sw.js','release.json']:
         path=target/file
-        path.write_text(path.read_text(encoding='utf-8').replace('2.102',version),encoding='utf-8')
+        path.write_text(path.read_text(encoding='utf-8').replace('2.103',version),encoding='utf-8')
     if broken:(target/'release.json').write_text(json.dumps({'version':'wrong','updateProtocol':1}),encoding='utf-8')
 async def main():
  with tempfile.TemporaryDirectory(prefix='nph-update-tests-') as folder:
@@ -32,20 +32,20 @@ async def main():
     ctx=await new_context();page=await ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
     await page.goto(url);await page.wait_for_function("UPD.reg && UPD.reg.active && !UPD.checking")
     await page.evaluate('navigator.serviceWorker.ready');await page.reload();await page.wait_for_function("!UPD.checking")
-    assert await page.evaluate('NPH_V')=='2.102'
+    assert await page.evaluate('NPH_V')=='2.103'
     print('PASS: first install',flush=True)
     await page.evaluate("()=>{"+(SOURCE/'tests/cooked-fixtures-297.js').read_text(encoding='utf-8')+"\nS.custom.test={name:'Test custom item',cat:'cup'};S.stock.test={out:false,qty:3};S.items.test={name:'Test item'};S.favs.test={P:true};S.notes['upgrade-test']={text:'Keep IDs, 🥕 and <text>',who:'P'};saveLocal();localStorage.setItem(RECOVERY_KEY,'recovery sentinel');caches.open('other-app-cache').then(c=>c.put('/unrelated',new Response('keep')))}")
     saved=await page.evaluate('JSON.stringify(S)')
     # A partial deployment fails installation and leaves the previous app/cache usable.
-    deploy(webroot,'2.103',broken=True)
+    deploy(webroot,'2.104',broken=True)
     await page.evaluate('checkUpdates(true)')
-    assert await page.evaluate('NPH_V')=='2.102'
+    assert await page.evaluate('NPH_V')=='2.103'
     assert not await page.evaluate('!!UPD.reg.waiting')
-    assert 'nph-2.102' in await page.evaluate('caches.keys()')
+    assert 'nph-2.103' in await page.evaluate('caches.keys()')
     print('PASS: incomplete release rejected',flush=True)
-    deploy(webroot,'2.103')
-    await page.evaluate('checkUpdates(true)');await page.wait_for_function("UPD.ready==='2.103'")
-    assert await page.evaluate('NPH_V')=='2.102' # never reload just because an update arrived
+    deploy(webroot,'2.104')
+    await page.evaluate('checkUpdates(true)');await page.wait_for_function("UPD.ready==='2.104'")
+    assert await page.evaluate('NPH_V')=='2.103' # never reload just because an update arrived
     await page.locator('#app-update').wait_for(state='visible')
     await page.locator('[data-update-view]').click()
     assert await page.locator('#update-section').is_visible()
@@ -60,21 +60,21 @@ async def main():
     await second.goto(url+'#shop');await second.wait_for_function("UPD.reg && !UPD.checking")
     await second.evaluate("editing=true;window.editSentinel='unsaved text'")
     async with page.expect_navigation():await page.locator('[data-update-apply]').click()
-    await page.wait_for_function("typeof UPD!=='undefined' && NPH_V==='2.103' && !UPD.checking")
+    await page.wait_for_function("typeof UPD!=='undefined' && NPH_V==='2.104' && !UPD.checking")
     assert await page.evaluate('window.initialSaved')==saved
     assert await page.evaluate("localStorage.getItem(RECOVERY_KEY)")=='recovery sentinel'
     assert await page.evaluate("localStorage.getItem('nph-me')")=='P'
     await second.wait_for_function('UPD.reloadReady')
-    assert await second.evaluate("NPH_V==='2.102'&&editing&&window.editSentinel==='unsaved text'")
+    assert await second.evaluate("NPH_V==='2.103'&&editing&&window.editSentinel==='unsaved text'")
     assert 'other-app-cache' in await page.evaluate('caches.keys()')
     print('PASS: modern activation, save guards, other-tab edit preservation',flush=True)
     # An already downloaded update can be activated while offline.
-    deploy(webroot,'2.104');await page.evaluate('checkUpdates(true)');await page.wait_for_function("UPD.ready==='2.104'")
+    deploy(webroot,'2.105');await page.evaluate('checkUpdates(true)');await page.wait_for_function("UPD.ready==='2.105'")
     await ctx.set_offline(True);await page.evaluate('checkUpdates(true)')
     assert await page.evaluate('UPD.status.includes("ready")')
     await page.evaluate('openSettings()')
     async with page.expect_navigation():await page.locator('[data-update-apply]').click()
-    await page.wait_for_function("typeof UPD!=='undefined' && NPH_V==='2.104' && !UPD.checking")
+    await page.wait_for_function("typeof UPD!=='undefined' && NPH_V==='2.105' && !UPD.checking")
     assert await page.evaluate("S.notes['upgrade-test'].text")=='Keep IDs, 🥕 and <text>'
     await page.evaluate('checkUpdates(true)');assert await page.evaluate('UPD.status.includes("Offline")'),await page.evaluate('({status:UPD.status,ready:UPD.ready,reloadReady:UPD.reloadReady,online:navigator.onLine,checking:UPD.checking})')
     await ctx.close()
@@ -90,7 +90,7 @@ async def main():
     await old.evaluate("()=>{S.notes['legacy-sentinel']={text:'Old phone data'};saveLocal();localStorage.setItem('legacy-pref','keep')}")
     deploy(webroot)
     await old.goto(url+'?nph-update=1#shop')
-    await old.wait_for_function("typeof UPD!=='undefined'&&NPH_V==='2.102'",timeout=30000)
+    await old.wait_for_function("typeof UPD!=='undefined'&&NPH_V==='2.103'",timeout=30000)
     assert await old.evaluate("S.notes['legacy-sentinel'].text")=='Old phone data'
     assert await old.evaluate("localStorage.getItem('legacy-pref')")=='keep'
     assert 'nph-update' not in old.url
@@ -106,7 +106,7 @@ async def main():
        else:await pg.goto(url);await pg.wait_for_function('UPD.reg && !UPD.checking')
        await pg.evaluate('openSettings()');await pg.wait_for_timeout(350)
        if name=='after':
-        await pg.evaluate("UPD.ready='2.103';UPD.status='v2.103 is ready. Your saved data will be kept.';paintUpdate()")
+        await pg.evaluate("UPD.ready='2.104';UPD.status='v2.104 is ready. Your saved data will be kept.';paintUpdate()")
         await pg.locator('[data-update-apply]').focus();await pg.locator('#update-section').scroll_into_view_if_needed()
        else:await pg.locator('[data-backup-save]').scroll_into_view_if_needed()
        assert await pg.evaluate('document.documentElement.scrollWidth<=innerWidth+1')

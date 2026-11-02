@@ -1,5 +1,7 @@
 # Updating NPH
 
+Installed-app logo refresh (v2.103): the page links to the stable manifest URL and the approved logo images have content-versioned URLs. After installing the app update, open the home-screen app online. Chrome may offer **Review app update** in its menu; review and accept the new logo if offered. Chrome/Android control the final launcher refresh. A plain home-screen shortcut may need to be added again; do not uninstall an installed app or clear site data to change its icon.
+
 NPH checks for updates when opened, brought back on screen or reconnected. In Settings, **App updates** shows the installed version, **Check for updates** and, once a complete new release has downloaded, **Update now**. An available notice offers **View update** or **Later**. A downloaded update can be opened offline.
 
 Finish your edit before updating. The app verifies that changes are saved locally before reopening. If shared writes are still pending or storage cannot save your changes, it keeps the current page open and explains why. Another open tab is offered the new version without interrupting its edit. Updates preserve saved household data, recovery backups and phone preferences; the JSON backup format remains version 1.

@@ -10,6 +10,11 @@ Use logo family B across installed app artwork and shared page icons. Follow the
 
 ## 0. Core rules (draft 30 Oct 2026, app v2.74, for P to check)
 
+### v2.103 installed logo refresh (2 Nov 2026)
+
+- Restore the page's stable `manifest.webmanifest` link and reference the already approved logo family B with content-versioned icon URLs. Keep manifest ID, start URL, scope and name stable so existing installed-app identity and saved data are preserved. Include matching browser/touch icons and cache the exact versioned assets for offline use.
+- Changing installed-app artwork does not alter portions, recipes, household data, backup schemas, storage or syncing. Chrome controls installed-icon refresh and may require user review; do not clear site data or uninstall the app as a logo-update method.
+
 ### v2.102 approved app updates (2 Nov 2026)
 
 - App-file updates preserve every household collection, stable record ID, recorded batch fact, portion relationship, internal backup recovery and phone preference. Saved-data/backup format remains schema 1. C22 consistency, C33 device-local Undo and C34 shared-write conflicts are unchanged; normal reload clears transient history only.

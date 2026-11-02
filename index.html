@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}/* v2.89: serving checks use the existing recipe body scale and amber review colour. */
+<!doctype html><html><head><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png?v=7edc0bdd41e1"><link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180.png?v=ffd59f706c53"><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}/* v2.89: serving checks use the existing recipe body scale and amber review colour. */
 .prep-list,.review-warnings{margin:10px 0;padding-left:20px;font-size:var(--fs-sm);line-height:1.6}
 .prep-list li+li,.review-warnings li+li{margin-top:7px}
 .review-warnings{color:var(--warn)}
@@ -2545,7 +2545,7 @@ function setQty(k,q){const cur=stockOf(k);put("stock",k,{...cur,out:cur.out!==fa
 
 /* ================= Meal planner (one engine, two pages) ================= */
 const PLANNERS={};
-const NPH_V=window.NPH_VERSION||"2.102";
+const NPH_V=window.NPH_VERSION||"2.103";
 function Planner(cfg){
   const id=cfg.id, R=cfg.R, T=cfg.T, IC=cfg.IC, BLK=cfg.BLK, ANCHOR=cfg.anchor;
   const P={id,cfg};
