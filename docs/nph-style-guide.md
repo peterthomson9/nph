@@ -610,3 +610,5 @@ Owner approved the real-app Backups Before/After and Recovery copies chooser. Re
 | Pass | Date | App version | Area | Result |
 |---|---|---|---|---|
 | 50 | 2 Nov 2026 | 2.104 | Approved recovery controls, chooser and storage status/error states | Disposable local Brave: Backups/recovery/confirmation in light/dark at 320/400px, wrapping, keyboard focus, destructive warning, readable startup errors and failed-save feedback. No horizontal overflow or page errors. Migration, atomic rollback, old backups, browser restart and late-save activation tested. Only these affected surfaces were visually inspected. |
+
+| 51 | 2 Nov 2026 | 2.105 | Fresh one-day meal card/source correction | Existing card and picker components are unchanged. The bug fix restores the existing Cook today · 2 portions text instead of the incorrect Leftovers · none left classification. Local real-picker/phone-layout checks cover 320/400px in light/dark; no redesign or new controls. |

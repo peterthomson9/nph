@@ -2546,7 +2546,7 @@ function setQty(k,q){const cur=stockOf(k);put("stock",k,{...cur,out:cur.out!==fa
 
 /* ================= Meal planner (one engine, two pages) ================= */
 const PLANNERS={};
-const NPH_V=window.NPH_VERSION||"2.104";
+const NPH_V=window.NPH_VERSION||"2.105";
 function Planner(cfg){
   const id=cfg.id, R=cfg.R, T=cfg.T, IC=cfg.IC, BLK=cfg.BLK, ANCHOR=cfg.anchor;
   const P={id,cfg};
@@ -3312,7 +3312,7 @@ function Planner(cfg){
   }
   /* the meal a day of a batch shows: its own day override, or the batch */
   function valAt(slot,k){return ov("x-"+slot+k)||(k<startN?SK:eff(blockAt(slot,k)))}
-  /* a day-override that matches the day before is that meal's leftovers (a mini-batch) */
+  /* Matching day overrides may form a mini-batch, except recipes made fresh for one day. */
   /* a run never crosses into the next block, unless that block's first day was taken over by an overlap */
   const crosses=(slot,k)=>blockAt(slot,k).start!==k||!!ov("x-"+slot+k);
   /* a one-off day inside a batch: a takeaway, or a meal from the fridge or freezer (never the batch's first day) */
@@ -3321,7 +3321,7 @@ function Planner(cfg){
   const cooksOn=(slot,n)=>runOf(slot,n).s===n&&!gapDay(slot,n);
   function gapDay(slot,k){if(bothOwn(slot,k))return true;const x=ov("x-"+slot+k);if(!x||x===SK||!R[x]||blockAt(slot,k).start===k)return false;return !!R[x].ta||!!S[id]["fz-m"+slot+k]}
   function runOf(slot,n){const b=blockAt(slot,n),v=valAt(slot,n);let s=n,t=n;
-    if(gapDay(slot,n))return {s,t,v,b};
+    if(gapDay(slot,n)||R[v]?.max===1)return {s,t,v,b};
     for(let g=0;g<8;g++){if(!crosses(slot,s))break;let k=s-1;while(gapFor(slot,k,v)&&k>s-5)k--;if(gapFor(slot,k,v)||valAt(slot,k)!==v||(k<s-1&&!crosses(slot,k+1)))break;s=k}
     for(let g=0;g<8;g++){let k=t+1;while(gapFor(slot,k,v)&&k<t+5)k++;if(gapFor(slot,k,v)||!crosses(slot,k)||valAt(slot,k)!==v)break;t=k}
     return {s,t,v,b}}

@@ -11,10 +11,10 @@ def deploy(target,version):
  shutil.copytree(SOURCE/'icons',target/'icons',dirs_exist_ok=True)
  for name in ['index.html','sw.js','release.json','manifest.webmanifest']:shutil.copy2(SOURCE/name,target/name)
  for name in ['index.html','sw.js','release.json']:
-  path=target/name;path.write_text(path.read_text(encoding='utf-8').replace('2.104',version),encoding='utf-8')
+  path=target/name;path.write_text(path.read_text(encoding='utf-8').replace('2.105',version),encoding='utf-8')
 async def main():
  with tempfile.TemporaryDirectory(prefix='nph-store-upgrade-') as folder:
-  deploy(pathlib.Path(folder),'2.104')
+  deploy(pathlib.Path(folder),'2.105')
   # Start with the real previously published localStorage app and worker.
   for name in ['index.html','sw.js','release.json','manifest.webmanifest']:
    old=subprocess.check_output(['git','show','51351eb:'+name],cwd=SOURCE)
@@ -31,30 +31,30 @@ async def main():
     await page.reload();await page.wait_for_function("typeof UPD!=='undefined'&&!UPD.checking")
     await page.evaluate("()=>{put('notes','before-migration',{text:'Real v2.103 save'});saveLocal()}")
     original=await page.evaluate('localStorage.getItem(LKEY)')
-    deploy(pathlib.Path(folder),'2.104');await page.evaluate('checkUpdates(true)');await page.wait_for_function("UPD.ready==='2.104'")
+    deploy(pathlib.Path(folder),'2.105');await page.evaluate('checkUpdates(true)');await page.wait_for_function("UPD.ready==='2.105'")
     await page.evaluate('openSettings()')
     async with page.expect_navigation():await page.locator('[data-update-apply]').click()
-    await page.wait_for_function("typeof NPH_STORE!=='undefined'&&typeof UPD!=='undefined'&&NPH_V==='2.104'")
+    await page.wait_for_function("typeof NPH_STORE!=='undefined'&&typeof UPD!=='undefined'&&NPH_V==='2.105'")
     assert await page.evaluate("NPH_STORE.initial.notes['before-migration'].text")=='Real v2.103 save'
     assert await page.evaluate('localStorage.getItem(LKEY)')==original
     await page.wait_for_function('!UPD.checking')
-    print('PASS: real published v2.103 -> v2.104 update migrates the last phone save',flush=True)
-    deploy(pathlib.Path(folder),'2.105')
-    await page.evaluate('checkUpdates(true)');await page.wait_for_function("UPD.ready==='2.105'")
+    print('PASS: real published v2.103 -> v2.105 update migrates the last phone save',flush=True)
+    deploy(pathlib.Path(folder),'2.106')
+    await page.evaluate('checkUpdates(true)');await page.wait_for_function("UPD.ready==='2.106'")
     await page.evaluate("""()=>{navigator.serviceWorker.addEventListener('controllerchange',()=>{put('notes','late-save',{text:'Saved during activation'});saveLocal().catch(()=>{})},{once:true});openSettings()}""")
     async with page.expect_navigation():await page.locator('[data-update-apply]').click()
-    await page.wait_for_function("typeof UPD!=='undefined'&&NPH_V==='2.105'")
+    await page.wait_for_function("typeof UPD!=='undefined'&&NPH_V==='2.106'")
     assert await page.evaluate("NPH_STORE.initial.notes['late-save'].text")=='Saved during activation'
     await page.wait_for_function('!UPD.checking')
-    deploy(pathlib.Path(folder),'2.106');await page.evaluate('checkUpdates(true)');await page.wait_for_function("UPD.ready==='2.106'")
+    deploy(pathlib.Path(folder),'2.107');await page.evaluate('checkUpdates(true)');await page.wait_for_function("UPD.ready==='2.107'")
     await page.evaluate("()=>{navigator.serviceWorker.addEventListener('controllerchange',()=>{editing=true;window.editSentinel='Keep this edit'},{once:true});openSettings()}")
     await page.locator('[data-update-apply]').click()
     await page.wait_for_function('UPD.reloadReady&&!UPD.requested')
-    assert await page.evaluate("NPH_V==='2.105'&&editing&&window.editSentinel==='Keep this edit'")
+    assert await page.evaluate("NPH_V==='2.106'&&editing&&window.editSentinel==='Keep this edit'")
     await page.evaluate('editing=false')
     async with page.expect_navigation():await page.locator('[data-update-apply]').click()
-    await page.wait_for_function("typeof UPD!=='undefined'&&NPH_V==='2.106'")
-    assert await page.evaluate('NPH_V')=='2.106'
+    await page.wait_for_function("typeof UPD!=='undefined'&&NPH_V==='2.107'")
+    assert await page.evaluate('NPH_V')=='2.107'
     assert await page.evaluate("S.notes['late-save'].text")=='Saved during activation'
     assert not errors,errors
     await browser.close()

@@ -2,7 +2,7 @@ const assert=(v,m)=>{if(!v)throw Error(m)},wait=()=>new Promise(r=>setTimeout(r,
 go('lilh');document.querySelector('#page-lilh').click();
 const close=async()=>{document.querySelector('#dlg').close();await wait()},reset=()=>{S.lh={};S.food={};S.items={};SHV++;SHNEED.lh=null};
 const lot=(fid,r,made,src,p=1,extra={})=>S.food[fid]={who:'lh',r,made,src,mk:p+1,out:0,stacks:[{w:'fridge',p,since:made,th:false}],...extra};
-const proposal=async(mode)=>{p.render();const before=JSON.stringify(S);p.openRecalc(mode);assert(before===JSON.stringify(S),'preview is read only');return [...document.querySelectorAll('.reclist li')].map(x=>x.innerText)};
+const proposal=async(mode)=>{p.render();const before=JSON.stringify(S);p.openRecalc(mode);assert(before===JSON.stringify(S),'preview is read only');return [...document.querySelectorAll('.reclist li')].map(x=>{const lines=x.innerText.split('\n');lines[0]=lines[0].toUpperCase();return lines.join('\n')})};
 // User example: yesterday manually changed to salmon, today assigned Saturday's mash.
 reset();S.lh['x-D'+(t-1)]={v:'s14'};S.lh['dy-xD'+(t-1)]={r:'s14',v:2};
 const fid='c-lh-D'+(t-1)+'-s14';S.food[fid]=p.newLot('D',t-1,'s14');

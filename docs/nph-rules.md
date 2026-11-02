@@ -10,6 +10,11 @@ Use logo family B across installed app artwork and shared page icons. Follow the
 
 ## 0. Core rules (draft 30 Oct 2026, app v2.74, for P to check)
 
+### v2.105 repeated fresh meals (2 Nov 2026)
+
+- C5/C6/C8/C11/C22: a recipe authored as one day only (`max: 1`) is a separate fresh cooking on each date, even when the same recipe is selected on consecutive lunches or dinners. Recipe-name equality must not join those meals into an implicit batch or imply leftover portions. Avo & eggs on toast makes two portions for N & P; those two portions are eaten that day, so the next regular recipe selection is another fresh two-portion meal.
+- C7/C23: genuine multi-day recipe runs and explicitly selected named fridge/freezer references retain their existing behaviour, portion accounting and warnings. This is a derived-classification correction; do not reset saved plans, rewrite past meal records or alter stored food/batch facts to apply it. Existing affected regular picks are reclassified correctly on load.
+
 ### v2.104 approved durable storage and recovery (2 Nov 2026)
 
 - IndexedDB is the authoritative phone-local household store after a completed migration transaction. Load it before running app logic; migrate all eight collections and the pre-upgrade snapshot atomically, preserving the original localStorage text. An inaccessible, invalid or unsupported save must show a visible startup error rather than run an empty planner over it.
