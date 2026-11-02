@@ -620,3 +620,13 @@ Owner approved the matched real-app Before/After and motion preview. Use a 180ms
 | Pass | Date | App version | Area | Result |
 |---|---|---|---|---|
 | 52 | 2 Nov 2026 | 2.106 | Approved page/calendar transitions, centred calendar and Cooked widths | Disposable local Brave, light/dark at 320/400px: matched previews, warning/expanded Cooked states, long stew title, fixed calendar geometry across 12 months and 42 selectable dates. Directional swipes, vertical/edit/dialog guards, rapid navigation, scroll position, visible bottom navigation during transitions, direct links and reduced motion pass. Only these affected surfaces were visually inspected. |
+
+### Approved Stock/checklist polish (v2.107, 2 November 2026)
+
+Owner approved the real-app stock/notices/motion preview, conditional on fixing its bottom cutoff. Stock item titles use the existing 12px meal-title token; cart/count centres align. Cooked headers have a full-size keyboard-operable collapse target with independent pills, neutral grey counts and a red expired-food highlight. Grouped heads-up notices use compact existing-token controls: title jumps, chevron expands, and each listed target jumps/highlights in its notification colour. The dropdown sits below the toolbar in an opaque bordered rounded shell with internal scrolling, a separate Scroll for more / End of list footer and an opening height ending on a complete row. Do not let underlying meal cards show through its bottom or hide the last list item behind navigation.
+
+Recipe headers fill behind their floating visible sheet handle. Navigation animates exact-layout inert copies for 180ms, while actual sticky headers and scroll remain stable; reduced motion remains immediate. Calendar hold is 200ms. The bottom page navigation uses the surface fill through the safe area with no duplicate root inset, and surface theme-colour fallback. Native Android navigation appearance requires a physical-phone check.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 53 | 2 Nov 2026 | 2.107 | Approved Stock headers, grouped notices, recipe top and motion | Disposable Brave: 320/400px light/dark, expanded lists/controls, source-name/semantic highlights, cart/count centres, recipe handle/top, 200ms hold and reduced motion. Dropdown cutoff correction additionally checked at 640/900px heights: complete opening rows, opaque footer, no navigation overlap and last item reachable. Exact snapshot/live geometry and scroll stability checked across all page directions. Only affected local surfaces were visually inspected; native Android system bars await phone verification. |

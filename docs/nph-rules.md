@@ -10,6 +10,14 @@ Use logo family B across installed app artwork and shared page icons. Follow the
 
 ## 0. Core rules (draft 30 Oct 2026, app v2.74, for P to check)
 
+### v2.107 approved stock and notification behaviour (2 Nov 2026)
+
+- ST3/ST4/C22: To buy captures its weekly-priority ordering on entering the view. Ticking/unticking, quantity changes and Undo preserve row positions for that visit. Leaving/reopening may recompute priority; stock and missing-ingredient consequences are unchanged.
+- C18/C19/C22: compare recorded freezing completion with 8pm on the night before an assigned meal. If food is still unfrozen and those times overlap, its upcoming card says to move it back to the fridge and offers the existing portion-confirmation action. Preserve the original fresh eat-by date for a return before freezing; do not invent thaw timestamps, auto-move food or create/remove portions. Once frozen or given sufficient time before thawing, use ordinary readiness rules. Past-day checks remain C3/C17.
+- Cooked storage headers collapse/expand across their full width. Pills are independent: when collapsed, a pill opens the group in its selected text mode. The red expired pill highlights only expired rows without replacing the text mode; meal counts stay grey. Empty selected warning/planning/process modes clear after moves.
+- Heads-up notices use source-consistent English/no-brackets meal names and compact groups for expired food, preparation, freeze/thaw, shopping and meal checks. A group title jumps to its first item; disclosures list individually selectable targets. Red expiry, freezer-blue thaw and amber warning highlights use the same wave. These controls change view state only. Long lists scroll within a solid rounded window below the toolbar; open at a complete row, keep the bottom footer outside scrolling content and allow the final item to be fully revealed above navigation on narrow/short screens.
+- Page transitions animate inert visual copies with the live destination at its settled scroll position. Preserve exact page/card/sticky geometry, rapid navigation cleanup, reduced motion and explicit Today actions. Calendar hold is 200ms; meal drag remains 400ms. Safe-area fill extends the navigation surface without hiding native OS controls; Android's system bar remains browser/OS controlled.
+
 ### v2.106 approved source consistency and interactions (2 Nov 2026)
 
 - C22/C23: derive meal names from effective ingredients consistently across day cards, recipe headings, leftover/source previews, stored-food choices and Cooked cards. Resolve leftovers through their named source; a beef-to-chicken swap must carry its name and ingredients to the meals using that source.

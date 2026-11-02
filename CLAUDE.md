@@ -46,7 +46,7 @@ A checker that reads the whole plan and stored food and lists anything breaking 
 
 ## Current version
 
-v2.106 (2 Nov 2026). Phones may retain an older cached version until its update is installed. Verify the hosted version when publishing. See the end of `docs/nph-changelog.md` for what's in each release.
+v2.107 (2 Nov 2026). Phones may retain an older cached version until its update is installed. Verify the hosted version when publishing. See the end of `docs/nph-changelog.md` for what's in each release.
 
 ## Working with P
 
@@ -82,3 +82,5 @@ v2.97: approved Cooked cards share day-view rows/animations. Amber grouped alert
 v2.98: owner requests the Cooked date/portion metadata one size smaller: use the existing 10px micro token for this line only. Titles and coloured statuses keep their approved sizes. See style-guide pass 44.
 
 v2.106: effective ingredient names and named source facts apply consistently to both profiles. New N & P batches capture original facts; preserve legacy fallbacks and v1 backups. Approved page/calendar transitions and card widths follow style-guide pass 52. Run tests/regression-2106.js (CLOCK=2026-11-02T10:00:00), tests/interaction-2106.py and tests/navigation-2106.py, alongside leftover/Cooked and release checks.
+
+v2.107: approved Stock/checklist changes and bottom-cutoff correction follow style-guide pass 53. Run tests/regression-2107.js at CLOCK=2026-11-02T19:00:00, tests/stock2107/test_ui.py, test_clip.py, test_notices.py and check_motion.py. Keep stable To buy visit order, original fresh expiry before freezing, C18 timing, semantic highlights and exact navigation snapshot/live geometry. Native Android system bars require physical-device verification.
