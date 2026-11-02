@@ -46,7 +46,7 @@ A checker that reads the whole plan and stored food and lists anything breaking 
 
 ## Current version
 
-v2.100 local (2 Nov 2026). Phones may retain an older cached version until its update is installed. Verify the hosted version when publishing. See the end of `docs/nph-changelog.md` for what's in each release.
+v2.106 (2 Nov 2026). Phones may retain an older cached version until its update is installed. Verify the hosted version when publishing. See the end of `docs/nph-changelog.md` for what's in each release.
 
 ## Working with P
 
@@ -80,3 +80,5 @@ v2.96: Lil H fresh fridge food is cook day plus the following calendar day only.
 v2.97: approved Cooked cards share day-view rows/animations. Amber grouped alerts mean usable unassigned portions; Eat today is status text, expired/date-invalid food stays red, and day-view readiness checks remain. The centred bar aligns to text and fades out throughout the action animation. Calendar and active freeze/thaw modes use their respective colours/timing. Preserve original dialogs and Add to meal for unfreezable spares. At CLOCK=2026-11-02T09:00:00 run tests/regression-297.js with FIXTURE=tests/cooked-fixtures-297.js; tests/layout-297.py covers both profiles/themes/phone widths and reduced motion. Fixtures belong only in disposable tests.
 
 v2.98: owner requests the Cooked date/portion metadata one size smaller: use the existing 10px micro token for this line only. Titles and coloured statuses keep their approved sizes. See style-guide pass 44.
+
+v2.106: effective ingredient names and named source facts apply consistently to both profiles. New N & P batches capture original facts; preserve legacy fallbacks and v1 backups. Approved page/calendar transitions and card widths follow style-guide pass 52. Run tests/regression-2106.js (CLOCK=2026-11-02T10:00:00), tests/interaction-2106.py and tests/navigation-2106.py, alongside leftover/Cooked and release checks.

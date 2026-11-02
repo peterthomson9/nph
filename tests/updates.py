@@ -14,7 +14,7 @@ def deploy(target,version='2.105',broken=False):
     for name in ['index.html','sw.js','release.json','manifest.webmanifest']:shutil.copy2(SOURCE/name,target/name)
     for file in ['index.html','sw.js','release.json']:
         path=target/file
-        path.write_text(path.read_text(encoding='utf-8').replace('2.105',version),encoding='utf-8')
+        path.write_text(path.read_text(encoding='utf-8').replace(__import__('re').search(r'const NPH_V=window.NPH_VERSION\|\|"([^"]+)"', (SOURCE/'index.html').read_text(encoding='utf-8')).group(1),version),encoding='utf-8')
     if broken:(target/'release.json').write_text(json.dumps({'version':'wrong','updateProtocol':1}),encoding='utf-8')
 async def main():
  with tempfile.TemporaryDirectory(prefix='nph-update-tests-') as folder:

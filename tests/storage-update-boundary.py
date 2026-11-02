@@ -11,7 +11,7 @@ def deploy(target,version):
  shutil.copytree(SOURCE/'icons',target/'icons',dirs_exist_ok=True)
  for name in ['index.html','sw.js','release.json','manifest.webmanifest']:shutil.copy2(SOURCE/name,target/name)
  for name in ['index.html','sw.js','release.json']:
-  path=target/name;path.write_text(path.read_text(encoding='utf-8').replace('2.105',version),encoding='utf-8')
+  path=target/name;path.write_text(path.read_text(encoding='utf-8').replace(__import__('re').search(r'const NPH_V=window.NPH_VERSION\|\|"([^"]+)"', (SOURCE/'index.html').read_text(encoding='utf-8')).group(1),version),encoding='utf-8')
 async def main():
  with tempfile.TemporaryDirectory(prefix='nph-store-upgrade-') as folder:
   deploy(pathlib.Path(folder),'2.105')

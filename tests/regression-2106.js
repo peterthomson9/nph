@@ -1,0 +1,40 @@
+const assert=(v,m)=>{if(!v)throw Error(m)},wait=()=>new Promise(r=>setTimeout(r,100));
+const p=PLANNERS.pn,d=p._dbg,t=d.todayN();
+S.pn={};S.food={};SHV++;SHNEED.pn=null;go('np');await wait();
+for(const row of PN_ING)S.stock['pn-'+row[0]]={out:false};
+S.pn['x-L'+t]={v:'beefstew'};S.pn['x-L'+(t+1)]={v:'beefstew'};
+const ik=d.mainInfo('L',t).ik,source=d.runOf('L',t).s;
+p.showDay(t,true);p.render();
+// Use the real source-meal ingredient controls, not a naming helper mock.
+document.querySelector(`#page-np .meal[data-at="L:${t}"]`).click();
+const beef=document.querySelector('#card [data-sub="beef"]');assert(beef,'source ingredient can be changed');beef.click();await wait();
+const chicken=[...document.querySelectorAll('#card [data-subto]')].find(e=>e.dataset.subto.split('|').includes('chthigh'));assert(chicken&&!chicken.disabled,'chicken thighs substitution is available: '+[...document.querySelectorAll('#card [data-subto]')].map(e=>e.dataset.subto).join(','));chicken.click();await wait();
+assert(document.querySelector('#card h2').textContent==='Chicken & root veg stew','recipe heading reflects actual substitution');
+document.querySelector('#dlg').close();p.render();await wait();
+for(const n of [t,t+1])assert(document.querySelector(`#page-np .meal[data-at="L:${n}"] b`).textContent==='Chicken & root veg stew','cook/leftover card uses its source changes');
+// Freeze the globally selected ingredients at cooking, then change future recipes.
+delete S.pn['is-'+ik];S.pn['rs-beefstew']={m:{beef:'chthigh'}};
+const fid='ingredient-source',lot=p.newLot('L',source,'beefstew');assert(lot,'batch has genuine spare portions');S.food[fid]=lot;
+S.pn['rs-beefstew']={m:{beef:'pork'}};
+S.pn['x-D'+(t+1)]={v:'beefstew'};S.pn['fz-mD'+(t+1)]={f:fid,p:2,w:'fridge'};
+p.render();await wait();
+assert(document.querySelector(`#page-np .meal[data-at="D:${t+1}"] b`).textContent==='Chicken & root veg stew','stored leftover keeps the recorded meat after a future recipe edit');
+const saved=JSON.stringify(S.food[fid]);
+const meal=document.querySelector(`#page-np .meal[data-at="D:${t+1}"]`);meal.click();await wait();
+assert(document.querySelector('#card h2').textContent==='Chicken & root veg stew','leftover recipe heading uses frozen source facts');
+assert(document.querySelector('#card .needs').textContent.toLowerCase().includes('chicken'),'leftover ingredient list retains chicken');
+assert(!document.querySelector('#card [data-sub]'),'stored recipe is view only');document.querySelector('#dlg').close();
+const button=document.querySelector(`#page-np .day[data-n="${t+1}"] [data-dswap]`);assert(button,'day ingredient-change toggle exists');button.click();await wait();
+assert(document.querySelector(`#page-np .meal[data-at="D:${t+1}"] em`).textContent.toLowerCase().includes('chicken'),'leftover ingredient-change summary follows its source');
+go('shop');shopView='cooked';foodWho='pn';renderShop();await wait();
+assert(document.querySelector(`[data-fcard="${fid}:0"] .meal b`).textContent==='Chicken & root veg stew','Cooked name uses the same effective ingredients');
+assert(lot.facts?.sm.beef==='chthigh','new PN batches record effective source ingredients');
+assert(JSON.stringify(S.food[fid])===saved,'display/recipe/global edits do not rewrite already cooked food');
+// Legacy batches use the known source key without inventing a historic snapshot.
+const legacy={...lot};delete legacy.facts;S.food.legacy=legacy;S.pn['is-xL'+source]={r:'beefstew',m:{beef:'chthigh'}};
+assert(p.nameOfLot('legacy',legacy)==='Chicken & root veg stew','legacy source changes remain readable');
+assert(!legacy.facts,'reading old food does not author new historical facts');
+await NPH_STORE.flush();
+const exported=await makeBackup();await parseBackup(JSON.stringify(exported));
+assert(exported.payload.data.food[fid].facts.sm.beef==='chthigh','recorded PN ingredients survive the existing backup format');
+return {sourcePicker:true,dayAndRecipeNames:true,leftoverIngredients:true,changeSummary:true,cookedName:true,recordedBatchPreserved:true,legacyFallback:true};

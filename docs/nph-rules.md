@@ -10,6 +10,13 @@ Use logo family B across installed app artwork and shared page icons. Follow the
 
 ## 0. Core rules (draft 30 Oct 2026, app v2.74, for P to check)
 
+### v2.106 approved source consistency and interactions (2 Nov 2026)
+
+- C22/C23: derive meal names from effective ingredients consistently across day cards, recipe headings, leftover/source previews, stored-food choices and Cooked cards. Resolve leftovers through their named source; a beef-to-chicken swap must carry its name and ingredients to the meals using that source.
+- New N & P cooked batches retain effective substitutions, recipe, method and original portions using the existing recorded-facts structure. Later global recipe edits cannot rewrite already-cooked ingredients. Explicit corrections to that source update its facts deliberately. Older batches use retained source information when available; do not invent missing history, bulk rewrite old batches or change portion accounting. Backup format 1/data schema 1 remain supported.
+- Navigation/calendar gestures change view state only. Page order is N & P, Lil H, Stock, without wrapping. Protect vertical scroll, browser-edge gestures, editing, forms, meal dragging and open dialogs. Cancel rapid transitions cleanly, retain fixed navigation/scroll positioning and honour reduced motion.
+- The approved calendar is a centred window with a fixed six-week grid and fixed month/weekday headings. Animate only dates when changing month. Cooked cards share normal day-card widths while preserving warnings, actions, expiry/process bars and portions.
+
 ### v2.105 repeated fresh meals (2 Nov 2026)
 
 - C5/C6/C8/C11/C22: a recipe authored as one day only (`max: 1`) is a separate fresh cooking on each date, even when the same recipe is selected on consecutive lunches or dinners. Recipe-name equality must not join those meals into an implicit batch or imply leftover portions. Avo & eggs on toast makes two portions for N & P; those two portions are eaten that day, so the next regular recipe selection is another fresh two-portion meal.

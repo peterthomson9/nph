@@ -3,7 +3,21 @@
 .prep-list li+li,.review-warnings li+li{margin-top:7px}
 .review-warnings{color:var(--warn)}
 .serve-variant{font-size:var(--fs-sm);line-height:1.6;margin-top:12px}.serve-variant summary{cursor:pointer;font-weight:700;color:var(--acc)}
-</style><style>#app-update{position:fixed;left:12px;right:12px;bottom:calc(72px + env(safe-area-inset-bottom,0px));max-width:440px;margin:auto;z-index:85;display:flex;align-items:center;gap:8px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:12px;box-shadow:var(--shadow);font-size:var(--fs-sm)}#app-update span{flex:1;font-weight:700}#app-update .todaybtn{min-height:42px;padding:0 10px;font-size:var(--fs-sm)}</style></head><body>
+</style><style>#app-update{position:fixed;left:12px;right:12px;bottom:calc(72px + env(safe-area-inset-bottom,0px));max-width:440px;margin:auto;z-index:85;display:flex;align-items:center;gap:8px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:12px;box-shadow:var(--shadow);font-size:var(--fs-sm)}#app-update span{flex:1;font-weight:700}#app-update .todaybtn{min-height:42px;padding:0 10px;font-size:var(--fs-sm)}</style><style>/* Matched day/Cooked gutters; shared short navigation motion. */
+html,body{overflow-x:clip}
+.cooked-group.cat{border-left:1px solid var(--line)}
+@media(max-width:599px){.cooked-group .fcards{padding-left:6px;padding-right:6px}}
+.calcard .calweek{display:grid;grid-template-columns:30px repeat(7,minmax(0,1fr));gap:4px;text-align:center}
+.calweek .h{font-size:var(--fs-cap);font-weight:700;color:var(--muted);padding:2px 0}
+.calcard .calbody{position:relative;overflow:hidden}
+.calcard .calgrid{grid-template-rows:repeat(6,42px)}
+.calcard .calhead{min-height:34px}
+.calcard .calhead b{min-width:0;text-align:center;flex:1;font-variant-numeric:tabular-nums}
+dialog:has(.calcard){margin:auto;width:calc(100% - 24px);max-width:380px;border-radius:20px;max-height:calc(100dvh - 32px)}
+dialog:has(.calcard)::before{display:none}
+@media(prefers-reduced-motion:no-preference){dialog[open]:has(.calcard){animation:popin .14s cubic-bezier(.2,.8,.2,1)}}
+@media(prefers-reduced-motion:reduce){dialog[open]:has(.calcard){animation:none}}
+</style></head><body>
 <title>NPH</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700;800&display=swap">
@@ -2546,7 +2560,7 @@ function setQty(k,q){const cur=stockOf(k);put("stock",k,{...cur,out:cur.out!==fa
 
 /* ================= Meal planner (one engine, two pages) ================= */
 const PLANNERS={};
-const NPH_V=window.NPH_VERSION||"2.105";
+const NPH_V=window.NPH_VERSION||"2.106";
 function Planner(cfg){
   const id=cfg.id, R=cfg.R, T=cfg.T, IC=cfg.IC, BLK=cfg.BLK, ANCHOR=cfg.anchor;
   const P={id,cfg};
@@ -2562,14 +2576,14 @@ function Planner(cfg){
   const famOf=k=>Object.keys(FAM).find(f=>FAM[f].includes(k));
   const rawSubs=(r,ik)=>{const g=(S[id]["rs-"+r]||{}).m||{},d=ik?S[id]["is-"+ik]:null;return {...g,...(d&&d.r===r?d.m||{}:{})}};
   const snapshotSubs=(r,ik)=>{const sm=rawSubs(r,ik);R[r].need.forEach(a=>{if(!sm[a]&&goneOut(r,a))sm[a]="-"});Object.keys(sm).filter(a=>a[0]==="+"&&isGone(a.slice(1))).forEach(a=>delete sm[a]);return sm};
-  const batchAt=(r,ik)=>{if(id!=="lh"||!ik)return null;
+  const batchAt=(r,ik)=>{if(!ik)return null;
     if(ik.startsWith("@lot:"))return S.food[ik.slice(5)]||null;
     const m=/^(?:x?([LD])|b)(-?\d+)$/.exec(ik),ref=m&&S[id]["fz-m"+(m[1]||"B")+m[2]];
     if(ref&&S.food[ref.f])return S.food[ref.f];
     return Object.values(S.food).find(l=>l.who===id&&l.r===r&&l.src&&(l.facts?l.facts.ik===ik:(()=>{const q=parseSrc(l.src);return (q.tag!=="m"?q.tag+q.slot+q.n:ikAt(q.slot,q.n))===ik})()))||null};
   const factsAt=(r,ik)=>{const lot=batchAt(r,ik);if(!lot)return null;if(lot.facts)return lot.facts;
-    const q=lot.src&&parseSrc(lot.src),key=q?(q.tag!=="m"?q.tag+q.slot+q.n:ikAt(q.slot,q.n)):null;
-    return {legacy:true,ik:key,sm:rawSubs(r,key),products:{},portions:lot.mk,recipe:LH_LEGACY[r]||R[r]}};
+    const q=lot.src&&parseSrc(lot.src),own=q&&"x"+q.slot+q.n,key=q?(q.tag!=="m"?q.tag+q.slot+q.n:S[id]["is-"+own]?.r===r?own:ikAt(q.slot,q.n)):null;
+    return {legacy:true,ik:key,sm:rawSubs(r,key),products:{},portions:lot.mk,recipe:id==="lh"?(LH_LEGACY[r]||R[r]):R[r]}};
   const subsOf=(r,ik)=>{const facts=factsAt(r,ik);if(facts)return {...facts.sm};
     const ref=/^(?:x?([LD])|b)(-?\d+)$/.exec(ik||"");if(ref&&S[id]["fz-m"+(ref[1]||"B")+ref[2]])ik=sourceIk(r,ik,(ref[1]||"B")+":"+ref[2]);return rawSubs(r,ik)};
   /* Household confirmation, 2 Nov 2026: milk, yoghurt and all other dairy are always full fat. */
@@ -2792,18 +2806,19 @@ function Planner(cfg){
   const eatsBatch=(slot,k)=>{const sp=splitOf(slot,k);if(!sp)return perDay;return Math.round(["p","n"].filter(w=>!sp[w]).length*perDay/2)};
   P.newLot=(slot,n,r,tag)=>{const half=tag==="n"||tag==="p",mk=P.madeOf(slot,n,r,tag),eat=P.eatOn(slot,n,tag);if(mk<=eat)return null;const abs=absOf(n);
     const key=half?tag+slot+n:ikAt(slot,n),since=id==="lh"?LH_FACTS_SINCE:0,newFacts=id==="lh"&&slotMs(id,abs,slot)-(eatAt(id,slot)-cookBy(id,slot))*3600000>=since;
-    const facts=id==="lh"?{v:1,legacy:!newFacts,ik:key,sm:snapshotSubs(r,key),products:newFacts?productsNow():{},portions:mk,method:S[id]["mt-"+key]?.v||R[r].m||cfg.method,recipe:JSON.parse(JSON.stringify(newFacts?R[r]:LH_LEGACY[r]))}:null;
+    const facts=id==="lh"?{v:1,legacy:!newFacts,ik:key,sm:snapshotSubs(r,key),products:newFacts?productsNow():{},portions:mk,method:S[id]["mt-"+key]?.v||R[r].m||cfg.method,recipe:JSON.parse(JSON.stringify(newFacts?R[r]:LH_LEGACY[r]))}:{v:1,legacy:false,ik:key,sm:snapshotSubs(r,key),products:{},portions:mk,method:S[id]["mt-"+key]?.v||R[r].m||cfg.method,recipe:JSON.parse(JSON.stringify(R[r]))};
     return {who:id,r,made:abs,mk,out:0,src:(half?tag:"")+slot+n,...(facts?{facts}:{}),stacks:[{w:"fridge",p:mk-eat,since:abs,th:false}]}};
   /* Expected leftovers can be planned before cooking, without putting food in Stock early. */
   P.plannedLots=()=>{const out={},t=todayAbs();P.cookEvents(t,t).forEach(e=>{const fid=lotIdOf(id,(e.tag||"")+e.slot,e.n,e.r);if(!S.food[fid]&&hrNow()<cookBy(id,e.slot)){const lot=P.newLot(e.slot,e.n,e.r,e.tag);if(lot)out[fid]={...lot,planned:true}}});return out};
   const foodLots=()=>({...P.plannedLots(),...S.food});
   const expectedBy=(lot,slot,n)=>!lot.planned||absOf(n)>lot.made||(absOf(n)===lot.made&&lot.src&&eatAt(id,slot)>eatAt(id,parseSrc(lot.src).slot));
   function sourceIk(r,ik,at){const m=/^([LDB]):(-?\d+)$/.exec(at||"");if(!m)return ik;const sl=m[1],n=+m[2],ref=S[id]["fz-m"+sl+n],lot=ref&&foodLots()[ref.f];
-    if(id==="lh"&&lot&&!lot.planned)return "@lot:"+ref.f;
-    if(id==="lh"&&sl!=="B"){const fid=lotIdOf(id,sl,runOf(sl,n).s,r);if(S.food[fid])return "@lot:"+fid}
+    if(lot&&!lot.planned)return "@lot:"+ref.f;
+    if(sl!=="B"){const fid=lotIdOf(id,sl,runOf(sl,n).s,r);if(S.food[fid])return "@lot:"+fid}
     if(lot&&lot.src){const q=parseSrc(lot.src);return q.tag!=="m"?q.tag+q.slot+q.n:q.slot==="B"?"b"+q.n:ikAt(q.slot,q.n)}
     return sl!=="B"?ikAt(sl,runOf(sl,n).s):ik}
-  const mealName=(r,sm,short=false)=>{const name=short?cardName(r,R[r].n):R[r].n,sw=swapsOf(sm);return name.replace(allWords(),m=>{const hit=sw.find(([a])=>wordIs(m.toLowerCase(),a.split("|")));if(!hit)return m;const k=hit[1].split("|")[0],w=({chbreast:"chicken",chthigh:"chicken",chicken:"chicken",beef:"beef",mince:"beef mince",pork:"pork"})[k]||subName(k);return /^\p{Lu}/u.test(m)?cap(w):w})};
+  const mealName=(r,sm,short=false,recipe=R[r])=>{const name=short?cardName(r,recipe.n):recipe.n,sw=swapsOf(sm);return name.replace(allWords(),m=>{const hit=sw.find(([a])=>wordIs(m.toLowerCase(),a.split("|")));if(!hit)return m;const k=hit[1].split("|")[0],w=({chbreast:"chicken",chthigh:"chicken",chicken:"chicken",beef:"beef",mince:"beef mince",pork:"pork"})[k]||subName(k);return /^\p{Lu}/u.test(m)?cap(w):w})};
+  P.nameOfLot=(fid,lot)=>mealName(lot.r,lot.facts?.sm||subsOf(lot.r,lot.planned?null:"@lot:"+fid),true,lot.facts?.recipe||R[lot.r]);
   /* take a planned use off the plan (its slot shows +) */
   P.clearBefore=cut=>{const nCut=nOfAbs(cut);Object.keys(S[id]).forEach(k=>{if(k.startsWith("rs-")||k.startsWith("sh-"))return;
       const pre=k.split("-")[0],rest=k.slice(pre.length+1),m=/(-?\d+)$/.exec(rest);if(!m)return;const n=+m[1];if(n>nCut)return;
@@ -2887,7 +2902,7 @@ function Planner(cfg){
   P.resetModes=()=>{if(fixN!=null||splitN!=null){fixN=null;splitN=null;P.render()}};
   /* jump straight to a day, just under the pinned bars. A plain jump (not a smooth scroll) so a phone still gliding from a flick can't cancel it;
      it's checked again a moment later in case the bars or the page changed height */
-  const jumpTo=(n,smooth)=>{const go=()=>{const el=root.querySelector(`.day[data-n="${n}"]`);if(!el)return;
+  const jumpTo=(n,smooth)=>{const go=()=>{if(root.hidden||root.dataset.motionOut)return;const el=root.querySelector(`.day[data-n="${n}"]`);if(!el)return;
       const sh=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--stickh"))||0,y=el.getBoundingClientRect().top+window.scrollY-sh-8;
       if(Math.abs(el.getBoundingClientRect().top-sh-8)>2)window.scrollTo({top:Math.max(0,y),behavior:"instant"})};
     /* the Today button glides there quickly (about a third of a second, easing out), then settles exactly (v2.74) */
@@ -3111,10 +3126,10 @@ function Planner(cfg){
         const ok=sts.filter(x=>x.free>0&&(w==="freezer"||(x.exp>=atAbs&&!x.expired))),free=ok.reduce((a,x)=>a+x.free,0),exp=Math.min(...(ok.length?ok:sts).map(x=>x.exp));
         const rdy=w==="fridge"?Math.max(0,...ok.map(thawReady)):0;
         stRows[w].push({fid,r:lot.r,free,exp,rdy:rdy>Date.now()?rdy:0,late:rdy>0&&c.slot&&typeof slotMs==="function"&&rdy>slotMs(id,atAbs,c.kind==="bf"?"B":c.slot),bad:sts.some(x=>x.expired),mv:(w==="freezer"||sts.some(x=>!x.expired&&x.exp>=atAbs))&&s.fut.some(u=>u.alloc.some(a=>a.w===w))})})});
-    const stOpt=(w,o)=>{const k=o.r,off=o.free<=0,mv=off&&o.mv&&!o.bad;
-      if(o.past)return `<div class="optrow stored${o.mine?" cur":""}"><button class="opt${o.mine?" cur":""}" style="--c:var(--i-${icOf(k)});--tcol:var(--${R[k].t})" data-fixpick="${o.fid}:${w}" data-fixat="${pslot}:${c.n}:${ftag}">${ic(icOf(k))}${esc(R[k].n)}<small>${o.mine?"Now":`Made ${fmtAbs(o.made,{weekday:"short",day:"numeric"})} · ${o.free} left then`}</small></button><button class="optmore" data-preview="${k}" data-fz="${o.fid}:${w}" aria-label="View the ${esc(R[k].n)} recipe" title="View recipe">${ic("dots")}</button></div>`;
+    const stOpt=(w,o)=>{const k=o.r,named=P.nameOfLot(o.fid,foodLots()[o.fid]),off=o.free<=0,mv=off&&o.mv&&!o.bad;
+      if(o.past)return `<div class="optrow stored${o.mine?" cur":""}"><button class="opt${o.mine?" cur":""}" style="--c:var(--i-${icOf(k)});--tcol:var(--${R[k].t})" data-fixpick="${o.fid}:${w}" data-fixat="${pslot}:${c.n}:${ftag}">${ic(icOf(k))}${esc(named)}<small>${o.mine?"Now":`Made ${fmtAbs(o.made,{weekday:"short",day:"numeric"})} · ${o.free} left then`}</small></button><button class="optmore" data-preview="${k}" data-fz="${o.fid}:${w}" aria-label="View the ${esc(named)} recipe" title="View recipe">${ic("dots")}</button></div>`;
       const lab=o.bad&&off?"Past its date":mv?"All planned · tap to move here":off?"All planned":`${o.free} left · ${o.rdy?`thawing, ready about ${readyTxt(o.rdy)}${o.late?": too late for this meal":""}`:w==="fridge"?(o.exp===todayAbs()?"eat today":`eat by ${fmtAbs(o.exp,{weekday:"short"})}`):`keeps till ${fmtAbs(o.exp,{day:"numeric",month:"short"})}`}`;
-      return `<div class="optrow stored${off?" off":""}${o.bad?" expd":""}${o.late?" thawl":""}"><button class="opt" style="--c:var(--i-${icOf(k)});--tcol:var(--${R[k].t})" ${mv?`data-fzmove="${o.fid}:${w}"`:`data-fzpick="${o.fid}:${w}" ${off?"disabled":""}`}>${ic(icOf(k))}${esc(R[k].n)}<small>${esc(lab)}</small></button><button class="optmore" data-preview="${k}" data-fz="${o.fid}:${w}" aria-label="View the ${esc(R[k].n)} recipe" title="View recipe">${ic("dots")}</button></div>`};
+      return `<div class="optrow stored${off?" off":""}${o.bad?" expd":""}${o.late?" thawl":""}"><button class="opt" style="--c:var(--i-${icOf(k)});--tcol:var(--${R[k].t})" ${mv?`data-fzmove="${o.fid}:${w}"`:`data-fzpick="${o.fid}:${w}" ${off?"disabled":""}`}>${ic(icOf(k))}${esc(named)}<small>${esc(lab)}</small></button><button class="optmore" data-preview="${k}" data-fz="${o.fid}:${w}" aria-label="View the ${esc(named)} recipe" title="View recipe">${ic("dots")}</button></div>`};
     /* on a batch's cook day, a takeaway or stored food pushes the batch back a day (and the later ones with it) */
     const shTxt=(()=>{if(c.kind!=="main"||c.n<todayN()||!R[p.cur]||R[p.cur].ta||blockAt(c.slot,c.n).start!==c.n)return "";
       return `Picking one of these moves ${R[p.cur].n} to ${fmt(c.n+1,{weekday:"long"})} with all its days. Every ${SLOTWORD[c.slot]} after it moves a day later too.`})(),
@@ -3296,7 +3311,7 @@ function Planner(cfg){
   function cookedNote(skip){const m=/^(?:main|day|bf):(?:([LD]):)?(-?\d+)$/.exec(skip||"");if(!m)return "Already cooked";const sl=m[1]||"B",n=+m[2],z=S[id]["fz-m"+sl+n],l=z&&S.food[z.f];
     if(l)return `Made ${fmtAbs(l.made,{weekday:"short",day:"numeric",month:"short"})}`;if(sl==="B")return "Already cooked";return `Cooked ${fmt(runOf(sl,n).s,{weekday:"short",day:"numeric",month:"short"})}`}
   function mealBtn0(r,label,em,cls,ik,ctx,src,at,ro){const source=sourceIk(r,ik,at),sm=subsOf(r,source),changes=ingredientChanges(r,sm,source);sCount+=changes.length;if(renderDay!=null&&dsOn.has(renderDay)){cls=(cls||"")+" swshow";em=changes.length?changes.map(c=>`<span class="change-${c.kind}" data-change="${c.kind}">${esc(c.text)}</span>`).join(" · "):'<span class="nw">No ingredient changes</span>'}
-    return `<button class="meal ${cls||""}" style="--c:var(--i-${icOf(r)});--tcol:var(--${R[r].t})" data-r="${r}"${ik?` data-ik="${ik}" data-ctx="${esc(ctx||"")}"`:""}${at?` data-at="${at}"`:""}${ro?` data-ro="${esc(ro)}"`:""}><span class="bub">${ic(icOf(r))}</span><span class="tx"><small>${label}${src?`<span class="srcb" title="${src==="fz"?"From the freezer":"From the fridge"}">${ic(src==="fz"?"snow":"fridge")}</span>`:""}</small><b>${esc(mealName(r,sm,true))}</b>${em?`<em>${em}</em>`:""}</span></button>`;
+    return `<button class="meal ${cls||""}" style="--c:var(--i-${icOf(r)});--tcol:var(--${R[r].t})" data-r="${r}"${ik?` data-ik="${ik}" data-ctx="${esc(ctx||"")}"`:""}${at?` data-at="${at}"`:""}${ro?` data-ro="${esc(ro)}"`:""}><span class="bub">${ic(icOf(r))}</span><span class="tx"><small>${label}${src?`<span class="srcb" title="${src==="fz"?"From the freezer":"From the fridge"}">${ic(src==="fz"?"snow":"fridge")}</span>`:""}</small><b>${esc(mealName(r,sm,true,factsAt(r,source)?.recipe||R[r]))}</b>${em?`<em>${em}</em>`:""}</span></button>`;
   }
   const swapBtn=(attr,hot,what)=>{const f=pendF,x=pendX||spBtn;pendF="";pendX="";
     return `<button class="mdots" data-mdots aria-label="Buttons for this meal" title="Recipe, swap, remove">${ic("dots")}</button>${f}<button class="sbtn swap${hot?" hot":""}" ${attr} aria-label="Swap ${what}" title="Swap for something else">${ic("swap")}</button>${x}`};
@@ -3507,7 +3522,7 @@ function Planner(cfg){
       /* rule C26 (v2.80): upcoming means its mealtime hasn't passed. Today's own batch counts while it isn't cooked yet (C2) */
       const hr0=hrNow(),fresh=sl=>hr0<Math.min(cookBy(id,sl),eatAt(id,sl)),ahead=sl=>hr0<eatAt(id,sl);
       const userDay=(s,k)=>{const x=S[id]["x-"+s+k];return x&&!x.auto&&!x.rp&&x.v!==SK&&!(R[x.v]&&R[x.v].ta)&&!S[id]["fz-m"+s+k]};
-      const lotIk=(lot,fid)=>{if(id==="lh"&&!lot.planned)return "@lot:"+fid;const so=parseSrc(lot.src);return !lot.src?null:so.slot==="B"?"b"+so.n:mainInfo0(so.slot,so.n).ik};
+      const lotIk=(lot,fid)=>{if(!lot.planned)return "@lot:"+fid;const so=parseSrc(lot.src);return !lot.src?null:so.slot==="B"?"b"+so.n:mainInfo0(so.slot,so.n).ik};
       /* A cooked salmon portion takes priority over an automatic batch not yet cooked.
          The main pass below must then replace that future batch, preserving the weekly cap. */
       const movableSalmon=(sl,n)=>{if(fridgeDays.has(sl+n)||S[id]["fz-m"+sl+n])return false;const ru=runOf(sl,n),b=ru.b,sw=S[id]["sw-"+sl+b.ostart];
@@ -3710,17 +3725,17 @@ function Planner(cfg){
   P.calClick=t=>{const cd=t.closest("[data-day]");if(cd){selN=pickN=+cd.dataset.day;$("dlg").close();P.showDay(pickN);return true}
     const cn=t.closest("[data-cal]");if(!cn)return false;const v=cn.dataset.cal;
     if(v==="today"){selN=todayN();pickN=null;$("dlg").close();P.showDay(selN,true);return true}
-    calM+=+v;if(calM<0){calM=11;calY--}if(calM>11){calM=0;calY++}renderCal();const g=$("card").querySelector(".calgrid");if(g&&!reduceMo())g.classList.add(+v>0?"slidel":"slider");return true};
+    const previous=$("card").querySelector(".calgrid");calM+=+v;if(calM<0){calM=11;calY--}if(calM>11){calM=0;calY++}renderCal();slideCalendar(previous,+v);return true};
   function renderCal(){
     const tn=todayN(),firstN=dn(new Date(calY,calM,1)),dim=new Date(calY,calM+1,0).getDate(),lastN=firstN+dim-1;
-    const gStart=firstN-mod(firstN,7),rows=Math.ceil((lastN-gStart+1)/7),viewMon=weekOf(selN);
-    let g=`<span class="h"></span>`+["M","T","W","T","F","S","S"].map(d=>`<span class="h">${d}</span>`).join("");
+    const gStart=firstN-mod(firstN,7),rows=6,viewMon=weekOf(selN);
+    let g="";const week=`<span class="h"></span>`+["M","T","W","T","F","S","S"].map(d=>`<span class="h">${d}</span>`).join("");
     for(let r=0;r<rows;r++){const rs=gStart+7*r;
       g+=`<span class="wk" title="Week of the 4-week plan">W${Math.floor(cyc(rs)/7)+1}</span>`;
       for(let n=rs;n<rs+7;n++){const d=nToDate(n),cls=[d.getUTCMonth()!==calM?"other":"",n>=viewMon&&n<viewMon+7?"inview":"",n===tn?"today":"",n===pickN?"sel":""].join(" ");
         g+=`<button class="cd ${cls}" data-day="${n}" aria-label="${fmt(n,{weekday:"long",day:"numeric",month:"long"})}"><span>${d.getUTCDate()}</span>${dayLines(n)}</button>`}}
     $("card").innerHTML=`<header><div class="ht"><h2>Pick a date</h2></div><button class="close" aria-label="Close">×</button></header><div class="cal"><div class="calhead"><button class="navb prev" data-cal="-1" aria-label="Previous month">${ic("chev")}</button><b>${new Date(Date.UTC(calY,calM,1)).toLocaleDateString("en-GB",{month:"long",year:"numeric",timeZone:"UTC"})}</b><button class="navb next" data-cal="1" aria-label="Next month">${ic("chev")}</button></div>
-      <div class="calgrid">${g}</div>
+      <div class="calweek">${week}</div><div class="calbody"><div class="calgrid">${g}</div></div>
       <div style="display:flex;justify-content:flex-end"><button class="navb calto" data-cal="today">Today</button></div></div>`;
   }
   let lastToday=todayN();
@@ -3967,7 +3982,7 @@ function Planner(cfg){
     if(R[r]&&R[r].ta&&!fromPicker){openTA(r,ik,ctx);return}
     if(!keepScroll&&!fromPicker)pvMode=null;
     const pv=pvMode&&pvMode.k===r?pvMode:null;
-    if(pv?.fz&&id==="lh")ik="@lot:"+pv.fz.split(":")[0];
+    if(pv?.fz)ik="@lot:"+pv.fz.split(":")[0];
     if(ro)ik=sourceIk(r,ik,at);
     if(!keepScroll){const mt=ik&&S[id]["mt-"+ik],dy=ik&&S[id]["dy-"+ik];rc={r,ik,ctx,at,ro:ro||"",cf:null,open:null,pend:null,dd:null,meth:mt&&mt.r===r?mt.v:null,days:dy&&dy.r===r?dy.v:(factsAt(r,ik)?.portions||0)/(cfg.perDay||2)||null}}
     const pvf=!!(pv&&pv.fix),pvE=!!(pv&&!pv.fz);  /* previewing a meal to pick: swaps wait in pv.subs and go on the meal once it's chosen */
@@ -4024,7 +4039,7 @@ function Planner(cfg){
       :pv.why?`<span class="pvwhy${soft(pv.why)?" rep "+softKind(pv.why):""}">${esc(pv.why)}</span>`:"";
     $("card").innerHTML=`<div class="rbar" style="--c:var(--i-${icOf(r)})">
       ${pv?`<button class="pvb" data-pvback aria-label="Back to the list" title="Back to the list">${ic("chev")}</button>`:`<span class="big">${ic(icOf(r))}</span>`}
-      <h2>${esc(mealName(r,sm))}</h2>
+      <h2>${esc(mealName(r,sm,false,x))}</h2>
       <button ${rc.ro?"disabled":""} class="pvb pen${rc.pen?" on":""}" data-pen aria-pressed="${!!rc.pen}" aria-label="${rc.pen?"Done adding notes":"Add notes"}" title="${rc.pen?"Done adding notes":"Add notes"}">${ic("pen")}</button>
       ${pv?`<button class="pvok" data-pvpick="${r}" ${pickable?"":"disabled"} aria-label="Choose ${esc(x.n)}" title="${pickable?(reshuf?"Choose this meal and reshuffle":"Choose this meal"):esc(pv.why)}">${ic("check")}</button>`:`<button class="close" aria-label="Close">×</button>`}
     </div>
@@ -4135,15 +4150,15 @@ function Planner(cfg){
     const o=t.closest("[data-subto]");
     const pvE=!!(pvMode&&!pvMode.fz&&pvMode.k===r);
     if(o&&o.disabled)return true;
-    const apply=to=>{const batch=id==="lh"&&ik?batchAt(r,ik):null;const a=rc.open,key=ik?"is-"+ik:"rs-"+r,cur=pvE?{...pvMode.subs}:batch?.facts?{...batch.facts.sm}:ik?(S[id][key]&&S[id][key].r===r?{...S[id][key].m}:{}):{...((S[id][key]||{}).m||{})},gl=batch?.facts?{}:pvE||ik?(S[id]["rs-"+r]||{}).m||{}:{};
+    const apply=to=>{const batch=ik?batchAt(r,ik):null;const a=rc.open,key=ik?"is-"+ik:"rs-"+r,cur=pvE?{...pvMode.subs}:batch?.facts?{...batch.facts.sm}:ik?(S[id][key]&&S[id][key].r===r?{...S[id][key].m}:{}):{...((S[id][key]||{}).m||{})},gl=batch?.facts?{}:pvE||ik?(S[id]["rs-"+r]||{}).m||{}:{};
       let msg=ik?"Swapped for this meal":"Recipe changed everywhere";
       if(a==="+"){cur[to]=1;msg=`${NAME[to.slice(1)]} added${ik?" to this meal":" everywhere"}`}
       else if(a[0]==="+"){if(gl[a])cur[a]=0;else delete cur[a];msg=`${NAME[a.slice(1)]} taken out`}
       else if(!to||to===a){if(gl[a]&&gl[a]!==a)cur[a]=a;else delete cur[a];if(FLEX)msg=`${altName(a)} is back${ik?" in this meal":""}`}
       else{cur[a]=to;if(to==="-")msg=`${altName(a)} left out${ik?" of this meal":" everywhere"}`}
       if(pvE){pvMode.subs=cur;rc.open=null;P.openR(r,null,null,true);return}
-      put(id,key,Object.keys(cur).length?(ik?{r,m:cur}:{m:cur}):null);
-      if(id==="lh"&&ik){const lot=batchAt(r,ik);if(lot&&lot.facts){const fid=Object.keys(S.food).find(k=>S.food[k]===lot);put("food",fid,{...lot,facts:{...lot.facts,sm:cur}})}}
+      if(!ik?.startsWith("@lot:"))put(id,key,Object.keys(cur).length?(ik?{r,m:cur}:{m:cur}):null);
+      if(ik){const lot=batchAt(r,ik);if(lot){const fid=Object.keys(S.food).find(k=>S.food[k]===lot);put("food",fid,{...lot,facts:{...factsAt(r,ik),sm:cur}})}}
       toast(msg);rc.open=null;rc.pend=null;P.openR(r,ik,ctx,true)};
     if(o){const to=o.dataset.subto;if(to==="-"&&cfg.flexRules&&cfg.flexRules.canLeave(r,rc.open,needOf(r,ik).flatMap(x=>x.split("|"))))return true;if(ik||pvE)apply(to);else{rc.pend=to;P.openR(r,ik,ctx,true)}return true}
     if(t.closest("[data-subok]")){apply(rc.pend);return true}
@@ -4757,7 +4772,7 @@ function cookedInfo(s,x){
   return {expired,bad,days,pct,colour,label,warnings,plans,phase:cookedPhase(x),canFreeze};
 }
 function stackCard(s,x){
-  const lot=s.lot,P=s.P,r=P.R[lot.r],v=cookedInfo(s,x),key=s.fid+":"+x.i;
+  const lot=s.lot,P=s.P,r=P.R[lot.r],name=P.nameOfLot(s.fid,lot),v=cookedInfo(s,x),key=s.fid+":"+x.i;
   const mode=foodModes[lot.who+":"+x.w]||"details",profile="var(--"+(lot.who==="lh"?"lilh":"np")+")";
   const timeMode=mode==="freezing"||mode==="thawing",phase=timeMode&&v.phase?.type===mode?v.phase:null;
   let text=esc(v.label),textColour=v.bad?"var(--bad)":v.colour;
@@ -4771,9 +4786,9 @@ function stackCard(s,x){
   return '<div class="fcard cooked-card days" data-fcard="'+key+'" data-storage="'+x.w+'" style="--profile:'+profile+';--acc:'+profile+';--c:var(--i-'+P.icOf(lot.r)+')" aria-expanded="false">'+
     '<div class="row cooked-row'+(v.warnings.length?' has-warning':'')+(v.bad?' has-bad':'')+'">'+
     '<div class="meal '+(x.w==="fridge"?"fromfr":"fromfz")+(v.bad?" srcbad":v.warnings.length?" srcwarn":"")+'"><span class="bub">'+ic(P.icOf(lot.r))+'</span><span class="tx">'+
-    '<b>'+esc(r.n)+badge+'</b><span class="cmeta">'+esc("Made "+dShort(lot.made)+" · "+plural(x.now,"portion"))+'</span>'+
+    '<b>'+esc(name)+badge+'</b><span class="cmeta">'+esc("Made "+dShort(lot.made)+" · "+plural(x.now,"portion"))+'</span>'+
     '<em class="cstatus" style="--status:'+textColour+'">'+text+'</em></span></div>'+
-    '<button type="button" class="mdots" data-fdots="'+key+'" aria-expanded="false" aria-label="Buttons for '+esc(r.n)+'">'+ic("dots")+'</button></div>'+
+    '<button type="button" class="mdots" data-fdots="'+key+'" aria-expanded="false" aria-label="Buttons for '+esc(name)+'">'+ic("dots")+'</button></div>'+
     '<span class="cbar" style="--bar-colour:'+(phase?phase.colour:v.colour)+';--pct:'+(phase?phase.pct:v.pct)+'%" data-visible="'+(!timeMode||!!phase)+'" role="img" aria-label="'+esc(phase?phase.label:v.label)+'"><i></i></span>'+
     '<template class="cactions"><span class="edic" aria-hidden="true"></span>'+primary+action("cal","Change date",profile,"data-fdate")+action("x","Discard","var(--bad)","data-fdisc")+'</template></div>';
 }
@@ -5119,7 +5134,7 @@ $("shop-add").addEventListener("submit",e=>{
 /* ================= Navigation ================= */
 const PAGES={np:"page-np",lilh:"page-lilh",shop:"page-shop"};
 let current="np";
-function go(p,push){
+function goNow(p,push){
   if(!PAGES[p])p="np";if(p!==current)closeFoodActions(true);current=p;keep.clear();
   Object.entries(PAGES).forEach(([k,el])=>$(el).hidden=k!==p);
   document.body.dataset.page=p;document.documentElement.dataset.page=p;
@@ -5128,6 +5143,67 @@ function go(p,push){
   renderShop();const Pl=p==="np"?PN:p==="lilh"?LH:null;
   if(Pl)Pl.showToday();else if(p==="shop")shopToTabs();else window.scrollTo(0,0);updStick();
 }
+/* Navigation changes views only; never mutate planner or stored-food data. */
+let pageMotion=null,pageNavigationReady=false;
+const MOTION_MS=180,MOTION_EASE="cubic-bezier(.2,.8,.2,1)";
+function finishPageMotion(){if(pageMotion)pageMotion()}
+function go(p,push){
+  finishPageMotion();
+  const allowMotion=pageNavigationReady;pageNavigationReady=true;
+  const from=current,old=$(PAGES[from]),rect=old?.getBoundingClientRect(),style=old?.getAttribute("style"),inert=old?.inert,aria=old?.getAttribute("aria-hidden");
+  const rootAnchor=document.documentElement.style.overflowAnchor,bodyAnchor=document.body.style.overflowAnchor;
+  document.documentElement.style.overflowAnchor="none";document.body.style.overflowAnchor="none";
+  goNow(p,push);
+  if(!allowMotion||from===current||!rect||reduceMo()||!old.animate){document.documentElement.style.overflowAnchor=rootAnchor;document.body.style.overflowAnchor=bodyAnchor;return}
+  const targetScroll=window.scrollY;
+  const incoming=$(PAGES[current]),direction=Object.keys(PAGES).indexOf(current)>Object.keys(PAGES).indexOf(from)?1:-1;
+  old.dataset.motionOut="true";old.hidden=false;old.inert=true;old.setAttribute("aria-hidden","true");
+  Object.assign(old.style,{position:"fixed",top:rect.top+"px",left:rect.left+"px",width:rect.width+"px",maxWidth:"none",margin:"0",pointerEvents:"none",zIndex:"30"});
+  const options={duration:MOTION_MS,easing:MOTION_EASE,fill:"both"};
+  const out=old.animate([{transform:"translateX(0)",opacity:1},{transform:`translateX(${-direction*18}%)`,opacity:0}],options);
+  const enter=incoming.animate([{transform:`translateX(${direction*18}%)`,opacity:0},{transform:"translateX(0)",opacity:1}],options);
+  let done=false;
+  window.scrollTo({top:targetScroll,behavior:"instant"});
+  pageMotion=()=>{if(done)return;done=true;out.cancel();enter.cancel();old.hidden=true;old.inert=inert;delete old.dataset.motionOut;if(style===null)old.removeAttribute("style");else old.setAttribute("style",style);if(aria===null)old.removeAttribute("aria-hidden");else old.setAttribute("aria-hidden",aria);pageMotion=null;window.scrollTo({top:targetScroll,behavior:"instant"});document.documentElement.style.overflowAnchor=rootAnchor;document.body.style.overflowAnchor=bodyAnchor;updStick()};
+  enter.finished.then(()=>{if(!done)finishPageMotion()},()=>{});
+}
+window.addEventListener("touchstart",finishPageMotion,{capture:true,passive:true});
+window.addEventListener("wheel",finishPageMotion,{capture:true,passive:true});
+function slideCalendar(previous,direction){
+  const grid=$("card").querySelector(".calgrid"),body=grid?.parentElement;
+  if(!grid||reduceMo()||!grid.animate)return;
+  const opts={duration:MOTION_MS,easing:MOTION_EASE,fill:"both"};
+  if(previous){previous.inert=true;previous.setAttribute("aria-hidden","true");Object.assign(previous.style,{position:"absolute",inset:"0",width:"100%",pointerEvents:"none"});body.appendChild(previous);
+    const animation=previous.animate([{transform:"translateX(0)",opacity:1},{transform:`translateX(${-direction*18}%)`,opacity:0}],opts);
+    animation.finished.then(()=>previous.remove(),()=>previous.remove());
+  }
+  const animation=grid.animate([{transform:`translateX(${direction*18}%)`,opacity:0},{transform:"translateX(0)",opacity:1}],opts);
+  animation.finished.then(()=>animation.cancel(),()=>{});
+}
+{let gesture=null;
+ document.addEventListener("touchstart",e=>{
+   gesture=null;if(e.touches.length!==1||$("dlg").open||editing||dragging||e.target.closest('input,textarea,select,[contenteditable="true"],.grip,.mdots,.edb,.tabbar,.stick,.dpanel'))return;
+   const t=e.touches[0];if(t.clientX<24||t.clientX>innerWidth-24)return;
+   if(!e.target.closest("main.page"))return;
+   gesture={x:t.clientX,y:t.clientY,time:performance.now(),horizontal:false};
+ },{passive:true});
+ document.addEventListener("touchmove",e=>{
+   if(!gesture)return;if(e.touches.length!==1){gesture=null;return}
+   const t=e.touches[0],dx=t.clientX-gesture.x,dy=t.clientY-gesture.y;
+   if(Math.abs(dy)>12&&!gesture.horizontal&&Math.abs(dy)>Math.abs(dx)){gesture=null;return}
+   if(Math.abs(dx)>12&&Math.abs(dx)>1.5*Math.abs(dy))gesture.horizontal=true;
+   if(gesture.horizontal&&e.cancelable)e.preventDefault();
+ },{passive:false});
+ document.addEventListener("touchend",e=>{
+   if(!gesture)return;const g=gesture;gesture=null;const t=e.changedTouches[0],dx=t.clientX-g.x,dy=t.clientY-g.y;
+   if($("dlg").open||editing||dragging||performance.now()-g.time>650||Math.abs(dx)<55||Math.abs(dx)<1.5*Math.abs(dy))return;
+   const keys=Object.keys(PAGES),next=keys[keys.indexOf(current)+(dx<0?1:-1)];if(next){pageSwipeUntil=performance.now()+350;go(next,true)}
+ },{passive:true});
+ document.addEventListener("touchcancel",()=>gesture=null,{passive:true});
+}
+let pageSwipeUntil=0;
+document.addEventListener("click",e=>{if(performance.now()<pageSwipeUntil&&e.target.closest("main.page")){e.preventDefault();e.stopImmediatePropagation()}},{capture:true});
+
 document.querySelector(".tabbar").addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(b)go(b.dataset.go,true)});
 window.addEventListener("hashchange",()=>{if(window.nphSkipHash&&window.nphSkipHash())return;go(location.hash.slice(1))});
 
@@ -5453,7 +5529,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-themeopt]"
 /* pinned header: shadow once it's stuck, and keep "scroll to a day" clear of it */
 function updStick(){
   /* pinned layers stack: each one pins just below the ones above it; the lowest pinned one gets the shadow */
-  let h=0,last=null;const pg=document.querySelector("main.page:not([hidden])");
+  let h=0,last=null;const pg=document.querySelector("main.page:not([hidden]):not([data-motion-out])");
   if(pg)pg.querySelectorAll(".stick").forEach(s=>{s.style.top=`calc(env(safe-area-inset-top, 0px) + ${h}px)`;
     const stuck=window.scrollY>0&&s.getBoundingClientRect().top<=h+1;s.classList.remove("stuck");if(stuck)last=s;h+=s.offsetHeight});
   if(last)last.classList.add("stuck");
@@ -5543,7 +5619,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.type==="sea
 
 /* 3. Swipe down on a bottom sheet to close it */
 (function(){const d=$("dlg");let y0=null,dy=0,ok=false;
-  d.addEventListener("touchstart",e=>{if(window.innerWidth>560||e.touches.length>1)return;y0=e.touches[0].clientY;dy=0;ok=d.scrollTop<=0},{passive:true});
+  d.addEventListener("touchstart",e=>{if(window.innerWidth>560||e.touches.length>1||$("card").classList.contains("calcard"))return;y0=e.touches[0].clientY;dy=0;ok=d.scrollTop<=0},{passive:true});
   d.addEventListener("touchmove",e=>{if(y0==null||!ok)return;dy=e.touches[0].clientY-y0;
     if(dy>0&&d.scrollTop<=0){e.preventDefault();d.classList.add("drag");d.style.transform=`translateY(${dy}px)`}else if(dy<0){ok=false;d.style.transform=""}},{passive:false});
   d.addEventListener("touchend",()=>{if(y0==null)return;d.classList.remove("drag");
