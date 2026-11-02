@@ -1,0 +1,13 @@
+const p=PLANNERS.lh,d=p._dbg,n=d.todayN()+1,assert=(v,m)=>{if(!v)throw Error(m)};go('lilh');
+S.lh={};S.food={};S.items={};S.lh['b-'+n]={v:'b1'};S.lh['x-L'+n]={v:'s11'};S.lh['is-xL'+n]={r:'s11',m:{oil:'-'}};p.render();
+document.querySelector('#page-lilh .day[data-n="'+n+'"] [data-dwarn]').click();const day=document.querySelector('#page-lilh .day[data-n="'+n+'"]');
+assert(!day.textContent.includes("Milk type isn't specified"),'no redundant dairy warning');
+assert(day.textContent.includes('Olive oil was left out'),'day warning uses actual None');
+p.setHu(true);
+assert(document.querySelector('#lh-hul').textContent.includes('Olive oil was left out'),'heads-up includes finishing review');
+document.querySelector('#page-lilh [data-drop="safe"]').click();
+const week=document.querySelector('#lh-nut').textContent;
+assert(week.includes('Preparation information')&&week.includes('Ingredient details to review'),'weekly review information');
+assert(week.includes('500ml HiPP Stage 3')&&week.includes('actual intake are not logged'),'routine context, not tracking');
+assert(week.includes('Olive oil was left out')&&!week.includes("Milk type isn't specified"),'weekly checks agree');
+return {recipeDayHeadsUpWeekAgree:true,preparationCoverageVisible:true,routineContextVisible:true};

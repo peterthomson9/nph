@@ -1,0 +1,234 @@
+{
+  "application": "NPH",
+  "formatVersion": 1,
+  "payload": {
+    "appVersion": "2.100",
+    "dataSchema": 1,
+    "createdAt": "2026-11-02T09:00:01.895Z",
+    "data": {
+      "stock": {
+        "cu-test-custom": {
+          "qty": 3,
+          "out": false
+        }
+      },
+      "custom": {
+        "test-custom": {
+          "name": "A & B <test>",
+          "cat": "cup"
+        }
+      },
+      "pn": {
+        "x-D7": {
+          "v": "beefstew"
+        },
+        "fz-mD7": {
+          "f": "pn-today",
+          "p": 2,
+          "w": "fridge"
+        },
+        "x-L7": {
+          "v": "beefstew"
+        },
+        "fz-mL7": {
+          "f": "pn-thaw",
+          "p": 2,
+          "w": "fridge"
+        },
+        "x-L8": {
+          "v": "beefstew"
+        },
+        "fz-mL8": {
+          "f": "pn-freeze",
+          "p": 2,
+          "w": "freezer"
+        }
+      },
+      "lh": {
+        "x-D28": {
+          "v": "s12"
+        },
+        "fz-mD28": {
+          "f": "lh-today",
+          "p": 1,
+          "w": "fridge"
+        },
+        "x-L28": {
+          "v": "s14"
+        },
+        "fz-mL28": {
+          "f": "lh-thaw",
+          "p": 1,
+          "w": "fridge"
+        },
+        "x-L29": {
+          "v": "m3"
+        },
+        "fz-mL29": {
+          "f": "lh-freeze",
+          "p": 1,
+          "w": "freezer"
+        }
+      },
+      "food": {
+        "lh-today": {
+          "who": "lh",
+          "r": "s12",
+          "made": 20758,
+          "mk": 2,
+          "out": 0,
+          "src": null,
+          "stacks": [
+            {
+              "w": "fridge",
+              "p": 1,
+              "since": 20758,
+              "th": false
+            }
+          ]
+        },
+        "lh-spare": {
+          "who": "lh",
+          "r": "s15",
+          "made": 20759,
+          "mk": 2,
+          "out": 0,
+          "src": null,
+          "stacks": [
+            {
+              "w": "fridge",
+              "p": 1,
+              "since": 20759,
+              "th": false
+            }
+          ]
+        },
+        "lh-thaw": {
+          "who": "lh",
+          "r": "s14",
+          "made": 20754,
+          "mk": 2,
+          "out": 0,
+          "src": null,
+          "stacks": [
+            {
+              "w": "fridge",
+              "p": 1,
+              "since": 20759,
+              "th": true,
+              "at": 1793592001545,
+              "h": 7
+            }
+          ]
+        },
+        "lh-freeze": {
+          "who": "lh",
+          "r": "m3",
+          "made": 20759,
+          "mk": 3,
+          "out": 0,
+          "src": null,
+          "stacks": [
+            {
+              "w": "freezer",
+              "p": 2,
+              "since": 20759,
+              "th": false,
+              "at": 1793602801545,
+              "h": 6
+            }
+          ]
+        },
+        "pn-today": {
+          "who": "pn",
+          "r": "beefstew",
+          "made": 20757,
+          "mk": 4,
+          "out": 0,
+          "src": null,
+          "stacks": [
+            {
+              "w": "fridge",
+              "p": 2,
+              "since": 20757,
+              "th": false
+            }
+          ]
+        },
+        "pn-spare": {
+          "who": "pn",
+          "r": "frittata",
+          "made": 20759,
+          "mk": 4,
+          "out": 0,
+          "src": null,
+          "stacks": [
+            {
+              "w": "fridge",
+              "p": 2,
+              "since": 20759,
+              "th": false
+            }
+          ]
+        },
+        "pn-thaw": {
+          "who": "pn",
+          "r": "beefstew",
+          "made": 20754,
+          "mk": 4,
+          "out": 0,
+          "src": null,
+          "stacks": [
+            {
+              "w": "fridge",
+              "p": 2,
+              "since": 20759,
+              "th": true,
+              "at": 1793581201545,
+              "h": 12
+            }
+          ]
+        },
+        "pn-freeze": {
+          "who": "pn",
+          "r": "beefstew",
+          "made": 20759,
+          "mk": 3,
+          "out": 0,
+          "src": null,
+          "stacks": [
+            {
+              "w": "freezer",
+              "p": 2,
+              "since": 20759,
+              "th": false,
+              "at": 1793602801545,
+              "h": 6
+            }
+          ]
+        }
+      },
+      "notes": {
+        "test-note": {
+          "pl": "lh",
+          "r": "s12",
+          "sec": "method",
+          "who": "P",
+          "text": "Keep <exact> & Unicode: é 🥕",
+          "at": 1793610001556
+        }
+      },
+      "items": {
+        "cu-test-custom": {
+          "name": "Long custom item"
+        }
+      },
+      "favs": {
+        "lh-s12": {
+          "N": true
+        }
+      }
+    }
+  },
+  "sha256": "d4db08326fcd1221e5c97b2c030faf118929bd8ef4785d7c5ea0b0f615284a23"
+}

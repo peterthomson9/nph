@@ -1,0 +1,15 @@
+const assert=(v,m)=>{if(!v)throw Error(m)};
+go('lilh');const p=PLANNERS.lh,t=p._dbg.todayN();
+S.lh['b-'+t]={v:'b1'};S.lh['is-b'+t]={r:'b1',m:{banana:'pouchfruit'}};p.render();
+let day=document.querySelector(`#page-lilh .day[data-n="${t}"]`);
+day.querySelector('[data-dswap]').click();
+day=document.querySelector(`#page-lilh .day[data-n="${t}"]`);
+const line=[...day.querySelectorAll('.swshow em')].find(e=>e.textContent.includes('pouch'));
+assert(line,'swap text shown');const probe=document.createElement('span');probe.style.color='var(--ok)';day.append(probe);
+const green=getComputedStyle(probe).color;
+assert(getComputedStyle(line).color===green,'swap text must be green, not muted');probe.remove();
+p.openR('b1');const banana=document.querySelector('[data-sub="banana"]');p.subClick(banana);
+const none=document.querySelector('[data-subto="-"]');assert(none,'removal option present');
+assert([...none.childNodes].filter(n=>n.nodeType===Node.TEXT_NODE).map(n=>n.textContent).join('').trim()==='None','removal label is None');
+assert(none.textContent.trim()==='None','entire removal option reads only None');
+return {swapTextColour:green,removalLabel:none.textContent.trim()};

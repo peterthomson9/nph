@@ -6,6 +6,39 @@ How to use it: when anything is added or changed, it uses these values. Each con
 
 All sizes are CSS pixels at a 400px-wide phone viewport. Colours are design tokens: always use the token, never a hard-coded colour, so dark mode follows automatically.
 
+## Visual direction and change review — owner decision, 2 November 2026
+
+This applies to **every visual change** on every page: new or edited text, status labels, highlights, icons, cards, controls, windows, empty states and interactions. Aim for a **modern, sleek, fairly simple** app, with consistency taking priority over one-off styling. These current owner decisions override older guidance below where it conflicts; pass-log entries describe historical work, not competing defaults. Explicit later owner decisions take precedence.
+
+### Shared visual standard
+
+- Reuse established components and tokens for colour, text, spacing, shapes and states. Match equivalent components across N & P, Lil H and Stock. A new feature should look like part of the same app.
+- Use clear text hierarchy: an informative heading, concise essential content, then short muted supporting text. Match existing wording for equivalent actions. Check added text for wrapping, repetition and relevance; avoid a new paragraph or heading when the existing control communicates the action.
+- Keep neutral surfaces, restrained accents and generous enough spacing to scan comfortably. Reserve strong colour for its defined meaning. Preserve the owner's green swaps, blue additions, amber removals/warnings and nutrition-only pill decisions.
+- Prefer one clear visual emphasis per selected/focused control. Never stack a second decorative focus/selection ring. Retain visible keyboard focus, readable text and distinct warning/destructive states.
+- Keep dialogs, headings, actions and spacing consistent. Use an existing window pattern before introducing another. Preserve touch targets, narrow-phone wrapping, light/dark themes and reduced-motion behaviour.
+- Keep secondary explanations in their established Info/disclosure locations. Preserve required preparation instructions and actionable warnings; simplicity should make these easier to find.
+- New exceptions need a deliberate guide update. Do not document an accidental inconsistency as the new standard merely to make a change pass.
+
+### Preview and approval levels
+
+| Size of change | Examples | Workflow |
+|---|---|---|
+| **Subtle** | Correcting token use, matching existing spacing/type/colour, fixing a duplicate highlight, short wording corrections with the same meaning | Apply directly against this guide and verify the affected views. No preview or approval needed. |
+| **Larger** | A noticeably different card/window, substantial new or reorganised text, a new visible section, changed highlight treatment, rearranged controls | Prepare a before-and-after preview, explain the effect briefly and ask P to approve the concrete result **before applying it to the main app**. |
+| **Major** | A new overall visual direction, navigation structure, large layout overhaul or app-wide redesign | Present a short list of **2–3 distinct options** with clear trade-offs and a recommendation. Provide representative previews so P can choose, then obtain approval for the chosen before-and-after design before applying it. |
+
+Judge size by what P will notice and how much the visual hierarchy/interaction changes, not line count. Do not split a larger redesign into many subtle edits to avoid a preview. Do not treat silence as approval. If P has already selected the exact preview, implement it without asking again; follow an explicit instruction to waive a preview when given.
+
+### Preview and verification checklist
+
+1. Read this guide and the latest owner decisions before coding any visual change, including text-only changes.
+2. Identify equivalent components elsewhere and reuse their styles and wording.
+3. For required previews, use **isolated local copies of the real app**. Show current Before and proposed After at the same viewport, theme, content and UI state. Keep the canonical version and saved phone data untouched while preparing options. Use genuine rendered screenshots/interactive previews, not an unrelated mockup.
+4. Check the affected surfaces in light and dark themes, on a normal phone and a narrow phone (400px and 320px). Include long text, expanded states, selection/focus and warnings where relevant. Inspect desktop layout when affected.
+5. Verify no horizontal overflow, hidden action, truncated essential text, inconsistent component sizing or duplicated selection highlight. Respect reduced motion and existing touch-target rules.
+6. Record what was checked in the pass log. Update this guide only for intentional standard changes or owner-approved exceptions, then follow the release checks in `CLAUDE.md`.
+
 ---
 
 ## 1. Colours
@@ -14,12 +47,12 @@ All sizes are CSS pixels at a 400px-wide phone viewport. Colours are design toke
 
 | Token | Light | Dark | Used for |
 |---|---|---|---|
-| `--bg` | #F7F7FA (was lilac #DEDCEC until v2.67) | #0F0F16 | Page background behind cards |
-| `--surface` | #FFFFFF | #1F1F2A | Cards, dialogs, buttons |
-| `--chip` | #F5F5FA | #272734 | Meal tiles, facts, segmented controls, inner tiles |
+| `--bg` | #F7F7FA (was lilac #DEDCEC until v2.67) | #121419 | Page background behind cards |
+| `--surface` | #FFFFFF | #1E2128 | Cards, dialogs, buttons |
+| `--chip` | #F2F3F6 | #292D36 | Meal tiles, facts, segmented controls, inner tiles |
 | `--ink` | #22222E | #E9E9F1 | Main text, icon-button icons |
-| `--muted` | #5F5F74 | #A5A5BB | Secondary text, row-action icons, close × |
-| `--line` | #D3D1E3 | #33334A | Every border and divider |
+| `--muted` | #5F5F74 | #ADB3C0 | Secondary text, row-action icons, close × |
+| `--line` | #D7D8E0 | #3B414D | Every border and divider |
 | `--on-acc` | #FFFFFF | #15151D | Text on a filled accent button |
 | `--shadow` | 0 10px 30px rgba(24,20,48,.18) | 0 10px 30px rgba(0,0,0,.5) | Dialogs and floating panels only |
 
@@ -31,7 +64,7 @@ Each page has one accent, set as `--acc` on the page and on any dialog it opens.
 |---|---|---|---|
 | N & P | `--np` | #5638CF | #B3A0FF |
 | Lil H | `--lilh` | #1C78C0 | #78C3F0 |
-| Stock | `--shop` | #A1379A | #EC98DF |
+| Stock | `--shop` | #8C4A86 | #D8A4CF |
 
 Dialogs opened from food that belongs to someone use that person's page accent (a Lil H discard is blue even on the Stock page).
 
@@ -45,7 +78,7 @@ Dialogs opened from food that belongs to someone use that person's page accent (
 | `--bad` / `--bad-bg` | #C0392B / #FBE4E1 | #F08A80 / #3A1C1A | Past its date, can't be done, destructive buttons (Delete, Discard, Remove) |
 | `--rep` / `--rep-bg` | #2B6CA8 / #E2EEFA | #86BEF2 / #172738 | A replacement suggestion: "swap to add this" |
 | `--keep` / `--keep-bg` | #0E7C76 / #DDF3F1 | #5FD3C8 / #11302D | "Keeps" notes: a meal that keeps fewer days |
-| `--swap` | #4F7A0E | #A8D46B | Swapping: the Swap button, swap icons, and ingredient swaps in recipes (highlighted words, "Changed everywhere" chip, swap tips). A swap that's needed because something is missing stays `--warn` (v2.70) |
+| `--swap` | `var(--ok)` = #2E8A5E | `var(--ok)` = #6CC79B | Swapping: the Swap button, swap icons, and ingredient swaps in recipes (highlighted words, "Changed everywhere" chip, swap tips). A swap that's needed because something is missing stays `--warn` (v2.70) |
 
 ### 1.4 Storage colours
 
@@ -60,19 +93,19 @@ Used as the 4px left edge of a category card (`--kc`) and its header icon.
 
 | Category | Icon | Token | Light | Dark |
 |---|---|---|---|---|
-| Fruit & veg | leaf | `--k-veg` | #3F8A43 | #7CC57E |
-| Meat & fish | drum | `--k-meat` | #B0413E | #E8807A |
-| Dairy, eggs & chilled | egg | `--k-chill` | #B8901A | #E6C559 |
-| Bread & bakery | toast | `--k-bread` | #A0672F | #D9A26B |
-| Pasta, rice & grains | pasta | `--k-grain` | #C17F1E | #EDB45C |
-| Cupboard | jar | `--k-cup` | #C25A2C | #EE936A |
-| Seasoning & herbs | herb | `--k-herbs` | #5F8A2A | #A9CF72 |
-| Frozen | snow | `--k-frozen` | #2F86C2 | #7DC0EE |
-| Baking | muffin | `--k-bake` | #B5527F | #E893BA |
-| Snacks & treats | cookie | `--k-snack` | #7A4A2C | #C9946E |
-| Lil H's milk & pouches | bottle | `--k-lhmilk` | #5C6BD6 | #9CA7F2 |
-| Baby care | nappy | `--k-babycare` | #2A8C88 | #6FCDC8 |
-| Household | roll | `--k-house` | #6B6788 | #AAA6C8 |
+| Fruit & veg | leaf | `--k-veg` | #47824A | #84BD86 |
+| Meat & fish | drum | `--k-meat` | #A34D4B | #DC8B86 |
+| Dairy, eggs & chilled | egg | `--k-chill` | #A7872B | #D6BD69 |
+| Bread & bakery | toast | `--k-bread` | #94673B | #CDA277 |
+| Pasta, rice & grains | pasta | `--k-grain` | #AF7C30 | #DDB16C |
+| Cupboard | jar | `--k-cup` | #B2603D | #DF9879 |
+| Seasoning & herbs | herb | `--k-herbs` | #5E7F35 | #A7C57C |
+| Frozen | snow | `--k-frozen` | #3F83B2 | #89BEE2 |
+| Baking | muffin | `--k-bake` | #AA5D80 | #DF9CBB |
+| Snacks & treats | cookie | `--k-snack` | #714C35 | #BF9678 |
+| Lil H's milk & pouches | bottle | `--k-lhmilk` | #6975C9 | #A5AEE9 |
+| Baby care | nappy | `--k-babycare` | #35817E | #79C3BF |
+| Household | roll | `--k-house` | #6E6B84 | #ADAAC4 |
 
 ### 1.6 Recipe-type colours
 
@@ -103,50 +136,50 @@ Each meal icon has its own tint `--i-<icon>`, defined in both modes in `:root`, 
 
 ## 2. Text
 
-Font: Figtree (400, 600, 700, 800), falling back to the system UI font. Base size 15px.
+Font: Figtree (400, 600, 700, 800), falling back to the system UI font. Base size 14px.
 
-**Text scale (v2.66):** every text size is one of six steps, set as tokens in `:root`. Never write a pixel size for text; use the token.
+**Text scale (v2.100, approved 2 November 2026):** every text size is one of six steps, set as tokens in `:root`. Never write a pixel size for text; use the token.
 
 | Token | Size | Used for |
 |---|---|---|
 | `--fs-cap` | 12px | Small caps labels, meta lines, pills, chips, tags, counts |
 | `--fs-sm` | 13px | Dialog body text, status lines, form labels, toolbar text buttons |
-| `--fs-body` | 15px | Reading text, item names, dialog buttons, day titles |
-| `--fs-title` | 17px | Card titles |
-| `--fs-h2` | 20px | Dialog and recipe titles |
-| `--fs-h1` | 28px | Page titles |
+| `--fs-body` | 14px | Reading text, item names, dialog buttons, day titles |
+| `--fs-title` | 15px | Card titles |
+| `--fs-h2` | 18px | Dialog and panel titles; recipe dialog titles use --fs-title |
+| `--fs-h1` | 24px | Page titles |
 
-Exceptions: the meal-type label on meal cards stays 8px until the meal-card decision (options page, point 1); the close × and delete glyphs keep their own sizes; text inputs stay at 16px or more so phones don't zoom in. Text sizes quoted elsewhere in this guide mean the nearest step.
+Exceptions: compact numeric badges and the weekly day initials retain their existing 10px micro size via `--fs-micro`; do not use this for explanatory text. Owner decision in v2.98: the compact Cooked-card Made [date] · [portions] line also uses the 10px micro token, one step below its previous 12px metadata size. This exception applies only to that secondary grey line. The meal-type label on meal cards stays 8px until the meal-card decision (options page, point 1); the close × and delete glyphs keep their own sizes; text inputs stay at 16px or more so phones don't zoom in. Text sizes quoted elsewhere in this guide mean the nearest step.
 
 | Role | Size / weight | Extra | Example |
 |---|---|---|---|
-| Page title (h1) | 28px / 800 | letter-spacing −0.03em | "N & P", "Stock" |
-| Dialog title (h2) | 20px / 800 | | "Move to the freezer" |
-| Card title (h3) | 17px / 800 | | "Fruit & veg", "Fridge" |
-| Day title (h3 in a day card) | 15px / 800 | +0.01em | "Thursday 29 Oct" |
-| Section label (h4) | 12px / 800 | UPPERCASE, +0.08em, `--muted` | "YOU NEED", "METHOD" |
-| Field label (small caps) | 12px / 700 | UPPERCASE, +0.08em, `--muted` | "COOK WITH", "MAKES", Re-plan day labels |
+| Page title (h1) | 24px / 700 | letter-spacing −0.03em | "N & P", "Stock" |
+| Dialog title (h2) | 18px / 700 | Recipe dialog titles: 15px / 700 | "Move to the freezer" |
+| Card title (h3) | 15px / 700 | | "Fruit & veg", "Fridge" |
+| Day title (h3 in a day card) | 14px / 700 | +0.01em | "Thursday 29 Oct" |
+| Section label (h4) | 12px / 800 | Sentence case, no added letter spacing, `--muted` | "You need", "Method" |
+| Field label (small caps) | 12px / 700 | Sentence case, no added letter spacing, `--muted` | "Cook with", "Makes", Re-plan day labels |
 | Meal type on a meal card | 8px / 700 | UPPERCASE, +0.06em, `--muted`. Kept small on purpose so cards stay short (decided 29 Oct 2026) | "BREAKFAST", "LUNCH", "DINNER" |
-| Body / reading text | 15px / 400 | line-height 1.5 in recipe steps; also recipe tips and Info & safety text | Recipe steps, tips, preferences |
+| Body / reading text | 14px / 400 | line-height 1.5 in recipe steps; also recipe tips and Info & safety text | Recipe steps, tips, preferences |
 | Dialog body text | 13px / 400 | `--ink`; explanations and notes under a field in `--muted` (decided 29 Oct 2026) | "This removes Wed 28 Oct breakfast.", "You can undo this from the Stock page." |
 | Form label | 13px / 800 | `--muted`, sentence case; "Optional" after it in the meta style | "Name", "Cooked", "Where from?" |
 | Status line | 13px / 700 | `--ink`, `--warn` when it's soon, `--bad` when it's past; the split-day hint uses the person's colour | "1 day left · eat by Fri 30 Oct" |
 | Corner label on a card | 12px / 700 | `--muted` | "4 portions" on a food card |
-| Group header (collapsible group inside a panel or dialog) | 15px / 800 | count beside it 12px / 600 `--muted` | "Breakfast  15 dishes", "In the fridge  1 meal" |
+| Group header (collapsible group inside a panel or dialog) | 14px / 700 | count beside it 12px / 600 `--muted` | "Breakfast  15 dishes", "In the fridge  1 meal" |
 | Card header count | 12px / 600 | `--muted`, or the status colour it reports | "All in", "1 meal", "Empty" |
-| Divider label | 12px / 800 | UPPERCASE, +0.08em, `--muted`, then a 1px `--line` rule to the edge. Week dividers use the page accent and add the date range at 12px / 700 `--muted`, sentence case | "FOOD", "ADD", "WEEK 4 OF 4  26 Oct – 1 Nov" |
-| Day tag | 12px / 700 | UPPERCASE, +0.08em, `--acc`, no border, right of the day title | "TODAY" |
+| Divider label | 12px / 800 | Sentence case, no added letter spacing, `--muted`, then a 1px `--line` rule to the edge. Week dividers use the page accent and add the date range at 12px / 700 `--muted`, sentence case | "Food", "Add", "Week 4 of 4  26 Oct – 1 Nov" |
+| Day tag | 12px / 700 | Sentence case, no added letter spacing, `--acc`, no border, right of the day title | "Today" |
 | Button sub-label | 12px / 700 | `--muted`, under the label of a two-line button | "Open groups", "All recipes" under Randomise |
 | Bottom bar label | 12px / 700 | `--muted`; current page in its accent | "N & P", "Lil H", "Stock" |
 | Hint pop-up (toast) | 13px / 700 | `--bg` text on an `--ink` box | "Tap ✎ to rename or × to delete an item" |
 | Meal name on a meal card | 12px / 700 | Up to 2 lines (decided 29 Oct 2026). No brackets on meal cards: Hungarian dishes show the English from their brackets, others drop the bracket (v2.68). Recipe windows and lists keep the full name | "Leek & potato soup", "Paprika chicken & rice" |
-| Item name (shopping, food cards) | 13.76–15px / 700 | | "Brown onions" |
+| Item name (shopping, food cards) | 13.76–14px / 700 | | "Brown onions" |
 | Meta line | 12px / 600 | `--muted` | "Cook today · 6 portions · 4 left" |
 | Toolbar text button | 13px / 800 | accent colour | "Today", "Expand all" |
-| Dialog button | 15px / 800 | | "Save", "Cancel" |
+| Dialog button | 14px / 800 | | "Save", "Cancel" |
 | Pill / chip | 12px / 700 | | heads-up chips, ingredient chips |
 
-Capitalisation: sentence case everywhere: "Got everything", "Move to freezer", "Expand all", "Re-plan upcoming meals". Never Title Case. Small-caps labels are written in sentence case and made uppercase by CSS only.
+Capitalisation: sentence case everywhere: "Got everything", "Move to freezer", "Expand all", "Re-plan upcoming meals". Never Title Case. Use sentence case directly for section headings, form labels, recipe facts, tips, week dividers and Today. Uppercase is reserved for compact meal-type labels, calendar weekday initials and initial-based keys. Preserve proper names, NPH, N & P, Lil H and user-authored text.
 
 ---
 
@@ -166,7 +199,7 @@ Capitalisation: sentence case everywhere: "Got everything", "Move to freezer", "
 | Dialog | radius 20px, padding 20px, gap 14px between blocks, 16px side margin |
 | Recipe card body | padding 18px 18px 22px, 20px between sections |
 | Pills and chips | radius 99px |
-| Focus ring | 3px `--acc` outline, 2px offset (−3px inside full-width rows and menus) |
+| Focus ring | 3px `--acc` outline, 2px offset (−3px inside full-width rows and menus). Selected segmented controls use the single inset selection-colour outline documented in v2.92, replacing their selection shadow while focused. |
 
 ---
 
@@ -189,7 +222,7 @@ Borders are authored as 1.5px. They render at 1px on a standard-density screen.
 | Randomise (decided 30 Oct 2026) | `.rand` | equal widths × 42+ (two lines: label + sub-label), 8px apart | 10px | 1.5px `--line` | `--surface` / `--acc` text, sub-label `--muted` | 16px | 8px apart |
 | Option row in a picker | `.opt` + `.optmore` | full width × 37+ | 10px (split between the two) | none | transparent / `--ink` | 18px | ⋯ joined on the right |
 | Collapsible header | `.cathead`, `.oghead` | full width × 41–45 | none | none | transparent | 18–20px | chevron far right |
-| Tick (in stock) | `.tick` | 28 × 28 | 50% | 2px | `--ok` filled when ticked | 16px | |
+| Tick (in stock) | `.tick` | 24 × 24 | 7px | 2px | `--ok` filled when ticked | centred tick | existing tap area retained; window checkboxes use 20px / 6px radius |
 | Pill / chip: heads-up, ingredient chips | `.huc`, `.need`, `.chip` | auto × 24 | 99px | 1.5px or none | 12% tint / colour | 13px | 6px apart |
 | Segmented choice: N & P / Lil H, meal slots, settings options | | equal widths × 34 (settings 38, inside a 3px-padded track) | 10px | 1.5px `--line` | `--surface`; selected = `--acc` border and text on a 14% `--acc` tint (P and N choices use `--p` / `--n` as their accent) | 16px | 6px apart |
 | Bottom bar tab | `.tabbar button` | one third wide × 45 | none | none | transparent / `--muted`; current = `--acc` with a bar on top | 21px | |
@@ -266,8 +299,9 @@ On touch screens (`pointer: coarse`) every small button gets an invisible touch 
 - **Choices inside a dialog:** equal tiles side by side, each with a label and a small description underneath (as in the date window's Breakfast / Lunch / Dinner and Re-plan's Planned meals / Everything). The most common choice starts selected, and the footer confirms it.
 - **Tick boxes everywhere (v2.82):** the recipe window's rounded square, with the tick centred: 24px in To buy and All items (radius 7px, tap area unchanged), 20px in windows (radius 6px); 2px `--line` border, filled with the item's colour when ticked. No round ticks anywhere.
 - **Pills in a window (v2.82):** every pill in one window is 28px tall, with a 1.5px border that's transparent until highlighted, so a highlighted pill is never bigger; heart pills in a pair are the same width.
-- **Recipe pills fold (v2.83):** the pills under a recipe's facts fold into one 30px round icon per kind, left to right: planned days (calendar, page accent: purple on N & P, blue on Lil H), good-for tags (leaf, green), freezing (snowflake, freezer blue), ingredient swaps (swap colour). A count badge shows when there's more than one. Tapping an icon fills it and sends its pills out to the right one after another (springy, 45ms apart); tapping any of those pills sends them back into the icon. One kind open at a time. No animation with reduced motion.
+- **Recipe pills fold (v2.83):** the pills under a recipe's facts fold into one 30px round icon per kind, left to right: planned days (calendar, page accent: purple on N & P, blue on Lil H), nutrition tags and recorded fat sources (leaf, green), freezing (snowflake, freezer blue), ingredient swaps (swap colour). A count badge shows when there's more than one. Tapping an icon fills it and sends its pills out to the right one after another (springy, 45ms apart); tapping any of those pills sends them back into the icon. Multiple kinds can stay open together (v2.85). Expanded pills use the same colour as their icon. No animation with reduced motion.
 - **Day warning button (v2.83):** next to the date: 26px pill, info icon and the count, amber outline on an amber tint; filled amber while on. Card details are `--muted` normally; while on, the warnings are amber 700 and a card with none says "No warnings" in `--muted`.
+- **Meal layout (v2.84):** Settings offers Auto and Cards. Auto shows one card per row on a phone and fits cards side by side on a wide screen; Cards shows one per row at every width. An old List preference opens as Auto.
 - **Settings choice buttons:** their tap areas stay on the button (v2.83 fix: they were covering Undo, Redo and the change list).
 - **Highlight after a jump (v2.83):** the view glides the item to the middle of the screen (the Today glide), then a glossy yellow wave crosses it once in about a second: it fills from the left to the right, then empties from the left, with a bright sheen on its leading edge and a soft shine along the top. Drawn as one sliding band (no masks or blur), so every phone shows all of it. A plain fade with reduced motion. Jumping to something in a folded group opens that group first.
 - **Info & safety (v2.82):** a panel header with Expand all / Collapse all, and every section folds with the chevron header used in the Kitchen panel. "This rotation" and "This week's nutrition" start open.
@@ -311,7 +345,7 @@ One meaning per icon and one icon per meaning. Icons are 24-unit outline symbols
 | Drag | `grip` |
 | Favourite | `heart` |
 | Light / dark | `sun` / `moon` |
-| Layout: cards / list | `l1` / `list` |
+| Layout: cards | `l1` |
 | Pages | `plate` N & P, `baby` Lil H, `basket` Stock |
 
 Sizes: 16px in toolbar and row buttons, 15px in compact buttons, 13px in chips, 18–20px in headers and pickers, 21px in the bottom bar. Shopping categories use their own icons (section 1.5); those icons mean that category only.
@@ -384,6 +418,8 @@ Every colour above has a dark value, in `:root` under `@media (prefers-color-sch
 | 25 | 31 Oct 2026 | 2.79 | Owner request | Re-plan loses "Keep as is"; Weekend bake gets the ⋯ and edit view; icon and ⋯ tiles in the edit view; freezer border wraps the ⋯; tinted dividers; heads-up list drops down under the toolbar |
 | 26 | 31 Oct 2026 | 2.80 | Rule C26 option C | Re-plan covers today's still-to-come meals and tomorrow's; already-cooked leftovers get a "Replace it" tick box |
 | 29 | 1 Nov 2026 | 2.83 | Owner request | Day warning button; recipe pills fold into icons; highlight redrawn left to right; jumps open folded groups; Settings Undo/Redo fixed |
+| 30 | 1 Nov 2026 | 2.84 | Owner request | Compact List meal layout removed; Auto and Cards remain, and saved List selections fall back to Auto |
+| 31 | 1 Nov 2026 | 2.85 | Owner request | Recipe nutrient pills match their green icon; pill groups can stay open together. Meal names follow ingredient swaps, with a green swap button next to the date that toggles the detail lines to green ingredient swaps; warnings and swaps have separate buttons. Checked locally in Brave at 400px |
 | 28 | 1 Nov 2026 | 2.82 | Owner request | Checks list rows jump to their subject with a glide and a glossy wave; option A colours (breakfast and lentil/chickpea swapped); square ticks everywhere, centred; equal pill sizes; 400ms hold; Info sections fold; weekly nutrition; header gap; centred cards; calendar swipe; panel flash fixed |
 | 27 | 31 Oct 2026 | 2.81 | Rules C7, C26, R1 | Re-plan list view gets the Planned meals / Everything choice tiles above the list; cooked food from the freezer says "Already cooked: in the freezer" |
 
@@ -409,3 +445,150 @@ Checked and consistent: the heads-up strip (it scrolls on purpose when its text 
 | Time-left bar | Green over half, amber at half or less, red track when empty (eat today) |
 | "Add to meal" bar | Under the meal-page toolbar: accent 12% tint, 1.5px accent-45% border, 14px corners, 13.76px text, Cancel on the right. Meals you can pick get a 2px accent ring; the rest fade to 40% |
 
+
+### v2.86 corrections (1 Nov 2026)
+
+Toggled swap details use --ok green and weight 700, overriding the normal muted detail line. The ingredient-removal option is labelled **None**; its nutrition warning remains visible.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 32 | 1 Nov 2026 | 2.86 | Owner corrections | Swap text green when toggled; removal option labelled None |
+
+### v2.87 correction (1 Nov 2026)
+
+The entire ingredient-removal option reads **None**, with no appended nutrition warning text (owner request).
+
+### First-use prompt (v2.88)
+
+Use the existing small Settings-style sheet: title Whose phone is this?, the P/N segmented buttons in their existing colours, and one full-width Confirm button. No selection by default; Confirm is disabled until one is selected. Open this instead of the full Settings sheet on first use.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 34 | 1 Nov 2026 | 2.88 | First-use identity | Compact P/N prompt and Confirm; existing Settings choice retained; Brave dark/light at 400px |
+
+### Lil H preparation and ingredient review (v2.89)
+
+After Method, show **Before serving** with ingredient-specific preparation actions at the existing recipe body scale. Show every required action. Keep the shared upright/supervised eating and temperature reminder below the checks. No green safety-complete badge. A small native disclosure holds optional serving alternatives where authored.
+
+**Energy & ingredients** lists recorded fat sources with a limit on what the app can infer. Omissions, incomplete preparation data and unknown/different dairy products use amber text. Dairy product buttons use the existing compact button style, wrap on narrow phones and highlight the selected type in green. A secondary button switches between shared N & P stock and separate Lil H stock. Saved batches show recorded choices disabled; their ingredient heading says Ingredients in this batch. Read-only leftovers label the original method Cook-day method (reference), with reheating guidance.
+
+The weekly view includes preparation-information coverage, ingredient details to review and the static feeding-routine note. Avoid wording that implies the app measured consumption or confirmed the whole day's needs.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 35 | 2 Nov 2026 | 2.89 | Lil H preparation/energy | Brave dark/light at 400px, dairy controls at 320px; complete serving checks, amber review text, wrapping controls and read-only batch facts |
+
+### Full-fat household dairy (v2.90)
+
+Remove dairy type buttons and the separate-stock chooser from the recipe review. Where dairy is present, show a short note: Milk, yoghurt and other dairy are always full fat in your kitchen. Keep recorded fat sources and genuine ingredient/preparation warnings. Earlier-batch wording refers only to unrecorded finishing details. Existing separate stock mappings are preserved internally.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 36 | 2 Nov 2026 | 2.90 | Confirmed household dairy | Product prompts removed; full-fat sources displayed; Brave phone layout checked |
+
+### Gas makers and combinations (v2.91)
+
+Show a compact **Gas makers & combinations** section immediately after the kitchen ingredient controls. Name higher-priority/milder contributors, show all applicable combination warnings in amber, and identify these as household planning categories. Put possible contributors in neutral explanatory text, separate from restrictions. A native disclosure contains ingredient notes and links to primary/authoritative sources. Never label an ingredient or meal gas-free.
+
+Keep the existing None label. Custom Add/Swap options preview other-main-meal clashes when a day is known. On screens at most 360px wide, recipe facts use two columns with Makes spanning the next row to prevent overflow.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 37 | 2 Nov 2026 | 2.91 | Digestion priority | Brave dark 400px/light 320px; visible custom combination warnings and source disclosure; no horizontal overflow |
+
+### Owner recipe and highlighting corrections (v2.92)
+
+- A selected segmented button with keyboard focus uses one inset outline in its selection colour; replace its selection shadow while focused, avoiding a second purple ring. Keep visible focus for keyboard users.
+- The date's ingredient-change icon counts all actual edits. Detail text is green (--ok) for swaps, blue (--lilh) for additions and amber (--warn) for removals. Recipe added/removed pills and Added labels use matching colours; stock-out warnings retain their amber status. Allow all change text to wrap, including split meal cards.
+- Under From your kitchen, show only the swap icon plus **This only changes this batch**, or **This changes all batches of this recipe** for library edits. Expanded ingredient controls share this one scope caption. Keep existing confirmation for changes everywhere.
+- You need shows **N items**. Remove tap-to-tick-off instructions; retain working checkboxes.
+- Green nutrition pills include **Fat source: …** using effective source ingredients. Do not include strong/milder gas-maker labels in nutrition. Keep the separate Gas makers & combinations review and its warnings. Recipe ingredient/preparation alerts sit beneath the top pills. Remove the standalone Energy & ingredients section.
+- Before serving uses a compact existing-token surface/border with its heading and muted body-size reminder, followed by the ingredient checklist. The reminder keeps all moisture, temperature, texture and supervision wording.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 38 | 2 Nov 2026 | 2.92 | Owner screenshots | Brave dark/light 400px/320px; single selected focus ring, three change colours, full wrapping, concise wording, serving header and source fat pills |
+
+### Recipe digestion section removed (v2.93)
+
+Do not render Gas makers & combinations or its explanatory body/disclosure in recipe windows. Keep amber warnings in ingredient Add/Swap options and the meal-card warning view. This overrides the v2.91/v2.92 recipe-section guidance; digestion logic remains active.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 39 | 2 Nov 2026 | 2.93 | Recipe simplification | Brave: no digestion explainer; amber Add and meal-card warnings retained; existing recipe layout preserved |
+
+### Historical batch notice scope (v2.94)
+
+Keep **Earlier batch: finishing details were not recorded** in the recipe window's existing amber recipe alerts. Do not show it on meal cards or count it toward their day warning icon, amber outline, heads-up or planning reasons. A genuine omission or other warning still uses normal amber treatment. No saved batch is rewritten to dismiss the notice.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 40 | 2 Nov 2026 | 2.94 | Historical notice | Brave: notice retained in recipe; no card warning/count for that notice; genuine omission warnings retained |
+
+### Visual consistency and preview policy (v2.95)
+
+The owner sets a modern, sleek, fairly simple direction across the app. The review levels at the top of this guide govern every visual change, including text and highlights: subtle fixes can proceed; larger changes need matched Before/After previews and approval; major redesigns need options. This replaces the older blanket request to preview every design change.
+
+Equivalent existing typography values now use the shared text tokens, including a documented micro-size exception for compact numeric badges/day initials. This pass changes implementation consistency, not the overall design or layout.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 41 | 2 Nov 2026 | 2.95 | Visual standards and review workflow | Standing policy covers all surfaces; typography token alignment retains existing sizes; affected recipe/serving views checked in local Brave |
+
+### Swap green consistency (v2.96)
+
+Owner decision: use the date ingredient-change badge green as the standard for Swap icons, action text and swapped ingredients. `--swap` aliases `--ok` in light, automatic dark and explicit dark themes. Warning swaps remain amber; additions remain blue and removals amber. No controls or layouts move. Lil H storage wording now says use by the end of the following day, matching the household limit.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 42 | 2 Nov 2026 | 2.96 | Swap green and storage wording | Brave: both planners; light/dark, 320px/400px; badge/action/expanded swaps match; actions fit, keyboard focus remains visible, no horizontal overflow. Recipe storage uses following-day wording. |
+
+### Approved Cooked-card design (v2.97)
+
+P approved the iterated real-app Day-view match previews and requested implementation without another preview. Match the day view's circular 34px food icon, compact title, joined dots and inline action tiles. Fridge/freezer use the same light/deeper blue tints as day cards. Keep dates and portions together beneath the title, then grouped text.
+
+Cooked header toggles sit beside Fridge/Freezer: amber unassigned portions, profile-coloured calendar, and storage-blue active freezing/thawing. They are mutually exclusive; ingredient-change toggles appear only on day views. Calendar icon/date pairs stay together. Only usable unassigned portions create Cooked amber outlines/counts; Eat today remains an amber status. Expired/date-invalid food remains red.
+
+The 3px bar sits below text and above the border. Measure its left inset from the text start and mirror it on the right. Anchors stay fixed when text modes change. It fades out with text in 140ms as native action tiles enter, stays hidden through outgoing tiles, then fades back. Restore open menus before measuring layout to prevent a refresh flash. Respect reduced motion; action labels may wrap on narrow phones.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 43 | 2 Nov 2026 | 2.97 | Approved Cooked cards and bar refinements | Brave: both profiles, light/dark at 320px/400px; text-aligned equal insets; hidden bar during open/close, rapid reopening and refresh; native animations and real storage actions; keyboard focus; reduced motion; no horizontal overflow. Assigned Eat today, spare portions, red expiry and process modes checked. |
+
+### Smaller Cooked metadata (v2.98)
+
+Owner request: reduce only the grey date/portion line from 12px (--fs-cap) to 10px (--fs-micro). Keep its muted colour, weight and proportional line height. Titles and coloured status text retain their sizes; bar alignment and menu animation remain unchanged. The smaller metadata frees vertical room above the fixed bar.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 44 | 2 Nov 2026 | 2.98 | Cooked metadata | Brave: both profiles, light/dark, 320px/400px; 10px metadata, retained status size, fitting text/actions and aligned bars; offline cache updated. |
+
+### Approved identity and palette (v2.99, 2 November 2026)
+
+Owner selected logo family B and requested direct implementation of the suggested palette across the latest app. Main identity: violet bowl with three rising details; N & P: simplified plate/cutlery; Lil H: bowl/spoon; Stock: basket. Use the shared SVG symbols everywhere, and icons/logo.svg as the main source. Raster app icons and maskable artwork derive from it.
+
+Keep violet and blue page accents; Stock uses muted plum (#8C4A86 light / #D8A4CF dark). Keep the soft off-white light page; use neutral borders and inset surfaces. Dark surfaces are charcoal: page #121419, cards #1E2128, inset controls #292D36, borders #3B414D. Header tiles use flat page accents with no decorative shadow. Food/category icon hues retain their meanings with 22% lower HSL saturation; shared token definitions are authoritative.
+
+Everyday controls retain neutral surfaces; selected controls and primary actions use page accents. Preserve the single focus/selection treatment. Green swaps, blue additions, amber removals/warnings, red destructive states, nutrition and storage meanings are unchanged. This presentation update must not alter planning, food records or saved data.
+
+| 45 | 2 Nov 2026 | 2.99 | Approved identity B and palette | Local Brave: N & P, Lil H and Stock in light/dark at 320/400px (12 views), no page errors or horizontal overflow; keyboard focus, Settings and expanded Kitchen checked. Installed icon artwork regenerated, including maskable safe padding. This is not a full-app regression audit. |
+
+### Approved compact typography (v2.100, 2 November 2026)
+
+Owner approved the typography preview in design-previews/typography. This supersedes older size and uppercase descriptions for the affected roles. Page titles 24px/700; dialog and panel titles 18px/700; card titles 15px/700; recipe dialog titles 15px/700 with 1.3 line height; body/day titles 14px; recipe lists 13px/600; compact top-tab labels 12px at widths up to 400px. Heading wrapping is natural, not balanced.
+
+Keep meal names at 12px, secondary labels/navigation at 12px, Cooked date/portion metadata at 10px and text-entry inputs at 16px minimum. Do not shrink those further to force everything onto one line. Preserve complete recipe names and essential instructions; long content may wrap.
+
+Use sentence case without decorative letter spacing for section headings, recipe facts/tips, week dividers and Today. Keep uppercase compact meal labels, calendar initials, initial-based keys and proper names. Never lowercase user text or recipe names globally. The compact Info tab opens the full Info & safety panel. Top-tab icons use 24px tiles and a 4px gap on phones. Week label/date groups do not wrap internally; groups can move to another line when needed.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 46 | 2 Nov 2026 | 2.100 | Approved compact typography and sentence case | Local Brave: 60 representative views across both themes and 320/400px, no page errors or horizontal overflow; fallback-font screenshots inspected. Cooked regression covers both profiles, warning/process modes, action fit/animations, keyboard focus and reduced motion. Offline release/cache reload passed. Downloaded Figtree and every custom-content/dialog variant were not exhaustively verified. |
+
+### Approved backup controls (v2.101, 2 November 2026)
+
+Owner approved the real-app Before/After preview. Settings adds Backups using the existing grouped surface, text hierarchy and paired 42px actions. Restore uses the existing dialog header, muted date/count summary, destructive warning and confirmation/cancel buttons. No new visual tokens or app-wide styling changes.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 47 | 2 Nov 2026 | 2.101 | Approved backup Settings and restore confirmation | Local disposable Brave, light/dark and 320/400px; normal, keyboard-focus and expanded destructive-confirmation states; essential text wraps and actions remain reachable without horizontal overflow. Historical-file restore/recovery, error and cancellation paths checked. Only these affected surfaces were visually inspected. |

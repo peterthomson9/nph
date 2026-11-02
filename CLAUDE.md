@@ -1,15 +1,17 @@
 # NPH: shared meal planner
 
-NPH is a single-file web app (`index.html`) published as a claude.ai artifact:
-https://claude.ai/code/artifact/151e0bb8-8974-437f-bb72-b7c8c313493c
+NPH is a single-file web app (`index.html`) used on P's and N's phones at:
+https://peterthomson9.github.io/nph/
 
-It plans meals for P (Peter) and N, and for their baby Lil H, and tracks stock, a shopping list and cooked food in the fridge and freezer. It's shared between P's and N's phones through the artifact's shared database (capabilities `{"db":{},"user":{}}`).
+An older Claude artifact also exists at https://claude.ai/code/artifact/151e0bb8-8974-437f-bb72-b7c8c313493c, but that is not the phone deployment.
+
+It plans meals for P (Peter) and N, and for their baby Lil H, and tracks stock, a shopping list and cooked food in the fridge and freezer. The GitHub Pages build currently saves separately in each phone's browser. Its Claude database hook does not run on GitHub Pages.
 
 ## Safety
 
-- **Never test on the real NPH.** It syncs live to N's phone. Test on a local copy (headless Chromium/Playwright, see `tests/`), never by clicking around the live link.
+- **Never test on the real NPH.** Test on a local copy (headless Chromium/Playwright, see `tests/`), never by clicking around the live link or changing either phone's saved data.
 - Never edit or reset saved data; only change the page code.
-- Publish updates to the **same URL** above (so the shared data and N's link keep working), and don't change the capabilities. Read the live version first so nothing published from elsewhere is lost.
+- Publish phone updates to the GitHub Pages URL above. Read the deployed version first so nothing published from elsewhere is lost. Do not publish a phone update only to the Claude artifact.
 
 ## Changing logic
 
@@ -24,13 +26,15 @@ Before implementing or changing any logic, check it against the core rules (sect
 
 ## Docs
 
-- `docs/nph-rules.md`: the rulebook. Section 0 "Core rules" is the source of truth for how meals, portions, storage, splits and swaps must behave; items marked **to build** / **to check** are agreed but not yet in the app. P has reviewed the core rules (C1–C34); C34 is parked. Section 1 has Lil H's digestion and nutrition rules (LH, N, R1).
+- `docs/nph-rules.md`: the rulebook. Section 0 "Core rules" is the source of truth for how meals, portions, storage, splits and swaps must behave; items marked **to build** / **to check** are agreed but not yet in the app. P has reviewed the core rules (C1–C34). Section 1 has Lil H's digestion and nutrition rules (LH, N, R1).
 - `docs/nph-style-guide.md`: the visual standard (tokens, text scale, buttons, dialogs, wording).
 - `docs/nph-changelog.md`: one line per change.
 
-## Reminders for P
+## Future phone sync
 
-- When the core rules are built into the app (before the release that finishes them), ask P again about C34 in `docs/nph-rules.md`: build the "If both phones change the same thing" setting, or remove it and keep "last change wins".
+- P wants sync later, after other app changes. No Firebase project exists yet; do not set one up or switch storage until P is ready.
+- Both phones currently show v2.83. P's phone is the main copy to seed the shared store; preserve its data and do not let an empty database replace it.
+- For a conflict on the same saved item, the last successful shared write wins (C34, decided 1 Nov 2026). Remove the unused P/N conflict selector when sync is implemented. Undo stays on the phone that made the change (C33).
 
 ## Planned next
 
@@ -38,17 +42,37 @@ A checker that reads the whole plan and stored food and lists anything breaking 
 
 ## Current version
 
-v2.83 (1 Nov 2026). See the end of `docs/nph-changelog.md` for what's in each release.
+v2.100 local (2 Nov 2026). Phones may retain an older cached version until its update is installed. Verify the hosted version when publishing. See the end of `docs/nph-changelog.md` for what's in each release.
 
 ## Working with P
 
 - Plain language; give the reasoning before the steps.
 - Keep it simple: no over-engineering.
 - Watch token usage: test on local headless copies, keep screenshots small.
-- For design changes, show options with screenshots of the real app before building; apply the ones P picks without changes directly.
+- Every visual change (including text, highlights, controls and windows) follows `docs/nph-style-guide.md`: consistency across the app, modern, sleek and fairly simple. Subtle fixes proceed directly. Larger changes need a real-app Before/After preview and approval before applying to the main app. Major redesigns need 2–3 options with trade-offs and representative previews first. Apply an already selected exact preview without asking again.
 
 ## Testing
 
 `tests/runjs.py <script.js>` loads `index.html` in a 400px-wide phone viewport and runs the script inside the page, printing its result (see `tests/example-today.js`). Set `CLOCK=2026-11-01T10:00:00` to pretend it's a given time (many rules depend on cook-by and meal times) and `THEME=light` or `dark` to force a theme. Needs `pip install playwright` and `playwright install chromium`.
 
+Set `BROWSER_EXE` to an installed Brave/Chrome executable to test that browser instead of bundled Chromium. `SCREENSHOT` optionally names an output PNG. The v2.85 regression scripts are `tests/regression-285.js` and `tests/expected-leftovers.js` (the latter uses `CLOCK=2026-11-01T09:00:00`). The recipe audit is in `docs/recipe-audit-v2.85.md`.
+
+v2.89 uses `CLOCK=2026-11-02T09:00:00`: `tests/regression-289.js` checks all 40 recipes, quantities, effective preparation and batch facts; `tests/planning-289.js` checks actual automatic choices and source corrections; `tests/weekly-289.js` checks day/heads-up/week agreement. `WIDTH=320` with `tests/layout-289.js` checks the narrow dairy controls. See `docs/lilh-preparation-energy-implementation.md` for the feature and examples.
+
 Useful hooks inside the page: `PLANNERS.pn` / `PLANNERS.lh` (each has `showToday()`, `render()`, `openRecalc()`, `huAct()`, `focusMeal(slot,n)` and `_dbg` with `todayN()`, `valAt()`, `R` and more), `go('np'|'lilh'|'shop')`, and the shared store `S`. Re-plan's buttons only respond when the window was opened by a tap on the page (like a real user), so open it by clicking the page's Re-plan button in tests.
+
+Household confirmation (2 Nov 2026, v2.90): milk, yoghurt and all other dairy are always full fat. No product-type confirmation prompts or uncertain-fat warnings are needed. Preserve existing shared/separate stock mappings and batch records. `tests/regression-290.js` covers the change.
+
+v2.91: digestion remains a priority in customised recipes and day combinations. Preserve Lil H household limits, distinguish these from general evidence, and require a reviewed digestion profile for every automatic recipe ingredient. Test with `tests/regression-291.js`; evidence and boundaries are in `docs/lilh-gas-evidence-v2.91.md`.
+
+v2.92: the date ingredient-change toggle includes swaps (green), additions (blue) and removals (amber). Recipe scope wording is concise; fat sources are nutrition pills, gas-makers remain only in the digestion review, and Before serving groups its reminder with the heading. `tests/regression-292.js`, `tests/layout-292.js` and the enhanced `tests/first-use.py` verify these owner-requested UI changes.
+
+v2.93: remove Gas makers & combinations and its explanatory body from recipe windows. Retain amber ingredient-choice and meal-card warnings, source-batch checks and automatic digestion rules. The updated `tests/regression-291.js` checks the retained warning locations.
+
+v2.94: earlier-batch finishing history is recipe-only; it adds no meal/day warning or planning issue. Real omissions and digestion warnings remain. Follow `AGENTS.md` and `docs/recipe-implementation-checklist.md` for new/changed recipes and ingredients. `tests/catalog-audit.js` is a required catalogue check; `tests/regression-294.js` verifies the notice scope, future-entry gates and same-day classification. Record explicit review in `LH_RECIPE_RULES_REVIEW`; never auto-approve new IDs. Current catalogue: 40 recipes, 45 stock ingredients and one temporary substitute, no audit issues.
+
+v2.96: Lil H fresh fridge food is cook day plus the following calendar day only. Re-plan prioritises actual in-date spare portions, then fresh choices, then expected leftovers with their source facts. Invalid stored dates participate in repair previews; manual picks, already-cooked safeguards and the weekly salmon cap remain. Swap green matches the date badge in all themes. See `docs/leftovers-review-v2.96.md`; test with `tests/regression-296.js` at CLOCK=2026-11-02T09:00:00 and `tests/layout-296.js` in both themes/phone widths.
+
+v2.97: approved Cooked cards share day-view rows/animations. Amber grouped alerts mean usable unassigned portions; Eat today is status text, expired/date-invalid food stays red, and day-view readiness checks remain. The centred bar aligns to text and fades out throughout the action animation. Calendar and active freeze/thaw modes use their respective colours/timing. Preserve original dialogs and Add to meal for unfreezable spares. At CLOCK=2026-11-02T09:00:00 run tests/regression-297.js with FIXTURE=tests/cooked-fixtures-297.js; tests/layout-297.py covers both profiles/themes/phone widths and reduced motion. Fixtures belong only in disposable tests.
+
+v2.98: owner requests the Cooked date/portion metadata one size smaller: use the existing 10px micro token for this line only. Titles and coloured statuses keep their approved sizes. See style-guide pass 44.

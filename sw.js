@@ -1,6 +1,6 @@
 /* NPH offline cache. The version below changes with every update, which is what tells phones there's a new version. */
-const VERSION="nph-1.1";
-const CORE=["./","./index.html","./manifest.webmanifest","./icons/icon-192.png","./icons/icon-512.png","./icons/maskable-512.png"];
+const VERSION="nph-2.101";
+const CORE=["./","./index.html","./manifest.webmanifest","./icons/icon-180.png","./icons/logo.svg","./icons/icon-192.png","./icons/icon-512.png","./icons/maskable-512.png"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(VERSION).then(c=>c.addAll(CORE)))});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==VERSION&&k!=="nph-fonts").map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener("message",e=>{if(e.data==="skipWaiting")self.skipWaiting()});

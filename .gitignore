@@ -1,0 +1,5 @@
+tests/recipe-data.json
+tests/*.png
+
+tests/screenshots/
+tests/roundtrip-backup.json
