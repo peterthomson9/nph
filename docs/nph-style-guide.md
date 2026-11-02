@@ -592,3 +592,11 @@ Owner approved the real-app Before/After preview. Settings adds Backups using th
 | Pass | Date | App version | Area | Result |
 |---|---|---|---|---|
 | 47 | 2 Nov 2026 | 2.101 | Approved backup Settings and restore confirmation | Local disposable Brave, light/dark and 320/400px; normal, keyboard-focus and expanded destructive-confirmation states; essential text wraps and actions remain reachable without horizontal overflow. Historical-file restore/recovery, error and cancellation paths checked. Only these affected surfaces were visually inspected. |
+
+### Approved app-update controls (v2.102, 2 November 2026)
+
+Owner approved the real-app Settings Before/After and available-notice preview. App updates sits above Backups in the existing grouped Settings surface, with installed version, muted live status and paired Check for updates / Update now actions. The non-modal notice uses the existing surface, border, shadow and action tokens, with View update / Later; it hides while a dialog is open. No app-wide visual changes.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 48 | 2 Nov 2026 | 2.102 | Approved app-update Settings and available notice | Disposable local Brave: before/after and notice views in light/dark at 320/400px, keyboard focus, wrapped actions/status, edit/sync/quota warnings and actual waiting/activation states. No horizontal overflow or page errors; upgrade data retention and offline reopening checked under /nph/. Only these affected surfaces were visually inspected. |

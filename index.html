@@ -3,7 +3,7 @@
 .prep-list li+li,.review-warnings li+li{margin-top:7px}
 .review-warnings{color:var(--warn)}
 .serve-variant{font-size:var(--fs-sm);line-height:1.6;margin-top:12px}.serve-variant summary{cursor:pointer;font-weight:700;color:var(--acc)}
-</style></head><body>
+</style><style>#app-update{position:fixed;left:12px;right:12px;bottom:calc(72px + env(safe-area-inset-bottom,0px));max-width:440px;margin:auto;z-index:85;display:flex;align-items:center;gap:8px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:12px;box-shadow:var(--shadow);font-size:var(--fs-sm)}#app-update span{flex:1;font-weight:700}#app-update .todaybtn{min-height:42px;padding:0 10px;font-size:var(--fs-sm)}</style></head><body>
 <title>NPH</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700;800&display=swap">
@@ -1815,7 +1815,7 @@ h1,h2,h3{font-weight:700;text-wrap:wrap}
   <button data-go="shop" style="--tc:var(--shop)"><svg class="ic" aria-hidden="true"><use href="#i-basket"/></svg>Stock<span class="count" id="shopCount" hidden></span></button>
 </div></nav>
 
-<dialog id="dlg"><div class="card" id="card"></div></dialog>
+<aside id="app-update" hidden aria-label="App update"><span>Update available</span><button class="todaybtn" data-update-view>View update</button><button class="todaybtn" data-update-later>Later</button></aside><dialog id="dlg"><div class="card" id="card"></div></dialog>
 <div class="toast" id="toast" role="status" hidden></div>
 <script>
 /* ================= N & P data ================= */
@@ -2545,7 +2545,7 @@ function setQty(k,q){const cur=stockOf(k);put("stock",k,{...cur,out:cur.out!==fa
 
 /* ================= Meal planner (one engine, two pages) ================= */
 const PLANNERS={};
-const NPH_V=window.NPH_VERSION||"2.101";
+const NPH_V=window.NPH_VERSION||"2.102";
 function Planner(cfg){
   const id=cfg.id, R=cfg.R, T=cfg.T, IC=cfg.IC, BLK=cfg.BLK, ANCHOR=cfg.anchor;
   const P={id,cfg};
@@ -5284,6 +5284,105 @@ document.addEventListener("change",async e=>{
   try{backupLocalOnly();if(file.size>BACKUP_LIMIT)throw Error("Choose an NPH backup smaller than 8 MB.");const parsed=await parseBackup(await file.text());backupLocalOnly();showBackupRestore(parsed)}catch(error){backupStatus(error.message,true)}
 });
 
+/* App files and household data have separate lifecycles. Never clear user storage. */
+const UPD={reg:null,starting:null,checking:false,status:"Checking for updates…",ready:null,reloadReady:false,requested:false,lastCheck:0,dismissed:null};
+function updateSection(){return `<section class="sgrp" id="update-section"><h4>App updates</h4><div class="srow"><div class="stx"><b>Installed: v${esc(NPH_V)}</b><small data-update-status role="status" aria-live="polite">${esc(UPD.status)}</small></div><div class="acts two"><button class="todaybtn" data-update-check ${UPD.checking?"disabled":""}>Check for updates</button><button class="todaybtn" data-update-apply ${UPD.ready||UPD.reloadReady?"":"hidden"}>Update now</button></div></div></section>`}
+function paintUpdate(){
+  document.querySelectorAll('[data-update-status]').forEach(e=>e.textContent=UPD.status);
+  document.querySelectorAll('[data-update-check]').forEach(e=>e.disabled=UPD.checking||UPD.requested);
+  document.querySelectorAll('[data-update-apply]').forEach(e=>{e.hidden=!UPD.ready&&!UPD.reloadReady;e.disabled=UPD.requested});
+  const banner=$("app-update");if(banner)banner.hidden=!(UPD.ready||UPD.reloadReady)||UPD.dismissed===(UPD.ready||"reload")||$("dlg").open;
+}
+function updateStatus(text){UPD.status=text;paintUpdate()}
+function workerVersion(worker){return new Promise((resolve,reject)=>{
+  if(!worker){resolve(null);return}
+  const channel=new MessageChannel(),timer=setTimeout(()=>{channel.port1.close();reject(Error("Update check timed out."))},4000);
+  channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data?.version||null)};
+  worker.postMessage({type:"NPH_VERSION"},[channel.port2]);
+})}
+async function inspectUpdate(){
+  const waiting=UPD.reg?.waiting;
+  if(waiting){UPD.ready=await workerVersion(waiting);UPD.reloadReady=false;if(UPD.ready)updateStatus(`v${UPD.ready} is ready. Your saved data will be kept.`);return}
+  const active=await workerVersion(navigator.serviceWorker.controller||UPD.reg?.active);
+  UPD.ready=null;UPD.reloadReady=!!active&&active!==NPH_V;
+  if(UPD.reloadReady)updateStatus(`v${active} is ready. Your saved data will be kept.`);
+}
+function watchWorker(worker){
+  if(!worker)return;
+  worker.addEventListener("statechange",()=>{
+    if(worker.state==="installed")inspectUpdate().catch(()=>updateStatus("Could not check the downloaded update. Try again."));
+    if(worker.state==="redundant")updateStatus("The update could not be downloaded. Your current app is unchanged.");
+  });
+}
+async function startUpdates(){
+  if(UPD.starting)return UPD.starting;
+  UPD.starting=(async()=>{
+    if(!("serviceWorker" in navigator)||!isSecureContext||location.protocol==="file:")throw Error("Updates are available from the NPH website.");
+    const reg=await navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"});UPD.reg=reg;
+    reg.addEventListener("updatefound",()=>watchWorker(reg.installing));watchWorker(reg.installing);
+    await inspectUpdate();return reg;
+  })().catch(e=>{UPD.starting=null;throw e});
+  return UPD.starting;
+}
+async function checkUpdates(manual=false){
+  if(UPD.checking||UPD.requested||(!manual&&Date.now()-UPD.lastCheck<60000))return;
+  UPD.checking=true;UPD.lastCheck=Date.now();updateStatus("Checking for updates…");
+  try{
+    const reg=await startUpdates();await inspectUpdate();
+    if(!navigator.onLine){updateStatus(UPD.ready||UPD.reloadReady?"The downloaded update is ready, even while offline.":"Offline. Check again when connected.");return}
+    await reg.update();
+    if(reg.installing){
+      updateStatus("Downloading the update…");
+      await new Promise((resolve,reject)=>{
+        const worker=reg.installing,timer=setTimeout(()=>reject(Error("The download is taking longer than expected. Check again shortly.")),20000);
+        const done=()=>{if(["installed","activated","redundant"].includes(worker.state)){clearTimeout(timer);worker.state==="redundant"?reject(Error("The update could not be downloaded. Your current app is unchanged.")):resolve()}};
+        worker.addEventListener("statechange",done);done();
+      });
+    }
+    await inspectUpdate();
+    if(!UPD.ready&&!UPD.reloadReady)updateStatus("Up to date. Updates are checked when you open the app.");
+  }catch(error){
+    if(UPD.ready||UPD.reloadReady)updateStatus("The downloaded update is ready, even while offline.");
+    else updateStatus(!navigator.onLine?"Offline. Check again when connected.":error instanceof TypeError?"Could not check for updates. Check your connection and try again.":error.message||"Could not check for updates. Try again.");
+  }finally{UPD.checking=false;paintUpdate()}
+}
+function updateSafe(){
+  if(editing||dragging||backupBusy||($("dlg").open&&!$("card").classList.contains("setcard")))throw Error("Finish your current edit before updating.");
+  if(pend.size||working)throw Error("Wait for your changes to finish syncing before updating.");
+}
+async function applyUpdate(){
+  if(UPD.requested)return;
+  try{
+    updateSafe();
+    const saved=JSON.stringify(S);localStorage.setItem(LKEY,saved);
+    if(localStorage.getItem(LKEY)!==saved)throw Error("Your changes could not be saved. The app has not updated.");
+    if(UPD.reloadReady){location.reload();return}
+    const worker=UPD.reg?.waiting;if(!worker)throw Error("Check for updates again before updating.");
+    UPD.requested=true;updateStatus("Opening the new version…");
+    UPD.timer=setTimeout(()=>{UPD.requested=false;updateStatus("The update has not opened yet. Try Update now again.")},12000);
+    worker.postMessage("skipWaiting");
+  }catch(error){updateStatus(error.name==="QuotaExceededError"?"Not enough phone storage to save changes. The app has not updated.":error.message);toast(UPD.status)}
+}
+if("serviceWorker" in navigator)navigator.serviceWorker.addEventListener("controllerchange",()=>{
+  if(UPD.requested){clearTimeout(UPD.timer);location.reload();return}
+  inspectUpdate().catch(()=>{});
+});
+document.addEventListener("click",e=>{
+  if(e.target.closest("[data-update-check]"))checkUpdates(true);
+  if(e.target.closest("[data-update-apply]"))applyUpdate();
+  if(e.target.closest("[data-update-view]")){try{updateSafe();openSettings();$("update-section").scrollIntoView({block:"center"});paintUpdate()}catch(error){toast(error.message)}}
+  if(e.target.closest("[data-update-later]")){UPD.dismissed=UPD.ready||"reload";paintUpdate()}
+});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)checkUpdates()});
+window.addEventListener("online",()=>checkUpdates(true));
+// Dialog changes should hide the notice rather than cover a form or confirmation.
+new MutationObserver(paintUpdate).observe($("dlg"),{attributes:true,attributeFilter:["open"]});
+setTimeout(()=>checkUpdates(),0);
+// The one-time transition parameter is consumed only by this update-aware app.
+if(new URL(location.href).searchParams.has("nph-update")){
+  const url=new URL(location.href);url.searchParams.delete("nph-update");history.replaceState(history.state,"",url);
+}
+
 function drawSettings(){const lay=PN.layout();
   const row=(icn,t,sub,ctl,cls)=>`<div class="srow${cls?" "+cls:""}"><div class="shd"><span class="sic">${ic(icn)}</span><span class="stx"><b>${t}</b>${sub?`<small>${sub}</small>`:""}</span></div>${ctl}</div>`;
   $("card").innerHTML=`<header><div class="ht"><h2>Settings</h2></div><button class="close" aria-label="Close">×</button></header>
@@ -5294,6 +5393,7 @@ function drawSettings(){const lay=PN.layout();
         ${row(themePref==="dark"?"moon":"sun","Appearance","",seg("data-themeopt",themePref,[["dark",`${ic("moon")}Dark`],["light",`${ic("sun")}Light`]]))}</section>
       <section class="sgrp"><h4>Meal plan</h4>
         ${row("cal","Layout","Auto: side by side on a big screen, one per row on a phone",seg("data-setlayout",lay,[[0,"Auto"],[1,`${ic("l1")}Cards`]]))}</section>
+      ${updateSection()}
       ${backupSection()}
       <section class="sgrp"><h4>Syncing</h4>
         ${row("recalc","If both phones change the same thing","Changes that don't clash, like notes, are always kept from both",seg("data-syncpri",syncPri,[["new","Newest"],["P","P's"],["N","N's"]]))}</section>

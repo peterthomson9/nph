@@ -10,6 +10,15 @@ Use logo family B across installed app artwork and shared page icons. Follow the
 
 ## 0. Core rules (draft 30 Oct 2026, app v2.74, for P to check)
 
+### v2.102 approved app updates (2 Nov 2026)
+
+- App-file updates preserve every household collection, stable record ID, recorded batch fact, portion relationship, internal backup recovery and phone preference. Saved-data/backup format remains schema 1. C22 consistency, C33 device-local Undo and C34 shared-write conflicts are unchanged; normal reload clears transient history only.
+- Validate a complete release before offering activation. Download in the background, show the installed version and check result in Settings, and offer Update now only once ready. Check on launch, foreground and reconnect; ordinary foreground checks are throttled. Report offline explicitly and allow an already downloaded release to open offline.
+- Before requested activation/reload, finish edits/backup operations and verify a local save. Pending/in-flight non-durable shared writes block reload. Future sync must make its queue durable before relaxing that guard. Another open tab keeps its edit and is offered a reload rather than forced to reload.
+- Only NPH release caches are removed. Never clear household storage, IndexedDB, recovery snapshots, fonts or unrelated caches as an update method. A failed/incomplete release leaves the installed version usable.
+- One-time bootstrap activation is limited to installations lacking the update protocol. Only an explicit `?nph-update=1` transition window is navigated automatically; other legacy windows keep their current page until reopened. Update-aware releases subsequently wait for user activation. Browser scheduling/network availability still govern when a check can complete.
+- App, worker and release-manifest versions derive from `NPH_V` using `tools/prepare-release.py`. Every release uses a new version; partial/mismatched deployments fail installation. Retain actual legacy and modern upgrade regression checks before publishing update changes.
+
 ### v2.101 approved backup and restore (2 Nov 2026)
 
 - Backups contain all eight saved household collections with stable record IDs, author metadata and recorded batch facts. Export/restore must not invent portions, rewrite ingredients or reclassify a historical batch. Normal date-based app behaviour resumes after loading restored data. This preserves C22/C23 and the recorded-batch rules.

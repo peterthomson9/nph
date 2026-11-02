@@ -17,13 +17,13 @@ async def main():
    await page.goto(f'http://127.0.0.1:{server.server_address[1]}/index.html')
    await page.evaluate("async()=>{await navigator.serviceWorker.register('./sw.js');await navigator.serviceWorker.ready}")
    await page.reload();await page.wait_for_timeout(400)
-   assert await page.evaluate('NPH_V')=='2.101'
-   assert 'nph-2.101' in await page.evaluate('caches.keys()')
+   assert await page.evaluate('NPH_V')=='2.102'
+   assert 'nph-2.102' in await page.evaluate('caches.keys()')
    await ctx.set_offline(True);await page.reload();await page.wait_for_timeout(400)
-   assert await page.evaluate('NPH_V')=='2.101'
+   assert await page.evaluate('NPH_V')=='2.102'
    assert await page.evaluate('Object.keys(PLANNERS.lh.R).length')==40
    assert not errors,errors
-   print(json.dumps({'release':'2.101','cacheUpdated':True,'offlineReload':True,'recipes':40,'pageErrors':0}))
+   print(json.dumps({'release':'2.102','cacheUpdated':True,'offlineReload':True,'recipes':40,'pageErrors':0}))
    await browser.close()
  finally: server.shutdown();server.server_close()
 asyncio.run(main())

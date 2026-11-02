@@ -20,9 +20,11 @@ Before implementing or changing any logic, check it against the core rules (sect
 ## Each release
 
 1. Bump `NPH_V` in `index.html` (search `const NPH_V=`).
-2. Test on a local copy: no page errors, the changed behaviour works, nothing else moved.
+2. Run `python tools/prepare-release.py` to derive the service-worker version and `release.json` from `NPH_V`, then `python tools/prepare-release.py --check`. Every app-file release must use a new version; never edit an installed cache in place. Test on a local copy: no page errors, the changed behaviour works, nothing else moved. For updates/backups run `tests/updates.py`, `tests/backups.py` and `tests/offline-289.py` in disposable browser contexts.
 3. Publish to the URL above.
 4. Add one dated line to `docs/nph-changelog.md`; update `docs/nph-style-guide.md` (and its pass log) for anything visual; update `docs/nph-rules.md` for anything about behaviour.
+
+The approved v2.102 update controls check on launch, foreground and reconnection; downloaded releases wait for Update now. Do not clear browser data to update. Existing installations without update controls can transition using `https://peterthomson9.github.io/nph/?nph-update=1#np`; see `docs/updates.md`. Preserve the v1 backup reader and historical regression fixture when changing storage in future.
 
 ## Docs
 

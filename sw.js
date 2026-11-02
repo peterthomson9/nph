@@ -1,14 +1,52 @@
-/* NPH offline cache. The version below changes with every update, which is what tells phones there's a new version. */
-const VERSION="nph-2.101";
-const CORE=["./","./index.html","./manifest.webmanifest","./icons/icon-180.png","./icons/logo.svg","./icons/icon-192.png","./icons/icon-512.png","./icons/maskable-512.png"];
-self.addEventListener("install",e=>{e.waitUntil(caches.open(VERSION).then(c=>c.addAll(CORE)))});
-self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==VERSION&&k!=="nph-fonts").map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
-self.addEventListener("message",e=>{if(e.data==="skipWaiting")self.skipWaiting()});
-self.addEventListener("fetch",e=>{
-  const u=new URL(e.request.url);if(e.request.method!=="GET")return;
-  if(u.hostname.endsWith("fonts.googleapis.com")||u.hostname.endsWith("fonts.gstatic.com")){
-    e.respondWith(caches.open("nph-fonts").then(c=>c.match(e.request).then(hit=>hit||fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>hit))));return}
-  if(u.origin!==location.origin)return;
-  if(e.request.mode==="navigate"){e.respondWith(caches.match("./index.html").then(hit=>hit||fetch(e.request)));return}
-  e.respondWith(caches.match(e.request,{ignoreSearch:true}).then(hit=>hit||fetch(e.request)));
+/* NPH app-file updates. Never clear localStorage, IndexedDB or non-NPH caches. */
+const VERSION="nph-2.102", APP_VERSION="2.102";
+const CORE=["./index.html","./release.json","./manifest.webmanifest","./icons/icon-180.png","./icons/logo.svg","./icons/icon-192.png","./icons/icon-512.png","./icons/maskable-512.png"];
+const absolute=path=>new URL(path,self.location).href;
+const ownRelease=key=>/^nph-\d/.test(key);
+self.addEventListener("install",event=>event.waitUntil((async()=>{
+  const keys=await caches.keys();
+  if(keys.includes(VERSION)&&self.registration.active)throw Error("Every release must use a new version.");
+  const existing=keys.filter(k=>ownRelease(k)&&k!==VERSION);
+  let updateAware=false;
+  for(const key of existing){const response=await (await caches.open(key)).match(absolute("./release.json"));if(response){try{if((await response.json()).updateProtocol===1)updateAware=true}catch(_){}}}
+  const legacyTransition=!!self.registration.active&&!updateAware;
+  try{
+    const cache=await caches.open(VERSION);
+    await cache.addAll(CORE.map(url=>new Request(absolute(url),{cache:"reload"})));
+    const release=await (await cache.match(absolute("./release.json"))).json();
+    const html=await (await cache.match(absolute("./index.html"))).text();
+    if(release.version!==APP_VERSION||release.updateProtocol!==1||!html.includes(`const NPH_V=window.NPH_VERSION||"${APP_VERSION}";`))throw Error("Incomplete release; keeping the installed app.");
+    if(legacyTransition)await cache.put(absolute("./__legacy_transition__"),new Response("1"));
+    // Only old installations lacking update controls bypass the waiting phase.
+    // They keep their current page until reopened, except an explicit transition link.
+    if(legacyTransition)await self.skipWaiting();
+  }catch(error){await caches.delete(VERSION);throw error}
+})()));
+self.addEventListener("activate",event=>event.waitUntil((async()=>{
+  await self.clients.claim();
+  const clients=await self.clients.matchAll({type:"window",includeUncontrolled:true});
+  const legacyTransition=!!(await (await caches.open(VERSION)).match(absolute("./__legacy_transition__")));
+  if(legacyTransition)for(const client of clients){
+    const url=new URL(client.url),scope=new URL(self.registration.scope);
+    // Do not await navigation inside activation: its fetch may need activation to finish.
+    if(url.origin===scope.origin&&url.pathname.startsWith(scope.pathname)&&url.searchParams.get("nph-update")==="1")client.navigate(client.url).catch(()=>{});
+  }
+  // Release caches contain only app files. Other sites, fonts and all saved data stay intact.
+  await Promise.all((await caches.keys()).filter(k=>ownRelease(k)&&k!==VERSION).map(k=>caches.delete(k)));
+})()));
+self.addEventListener("message",event=>{
+  if(event.data==="skipWaiting")event.waitUntil(self.skipWaiting());
+  if(event.data?.type==="NPH_VERSION")event.ports[0]?.postMessage({version:APP_VERSION});
+});
+self.addEventListener("fetch",event=>{
+  const request=event.request,url=new URL(request.url);if(request.method!=="GET")return;
+  if(["fonts.googleapis.com","fonts.gstatic.com"].includes(url.hostname)){
+    event.respondWith((async()=>{const cache=await caches.open("nph-fonts"),hit=await cache.match(request);if(hit)return hit;const response=await fetch(request);if(response.ok)await cache.put(request,response.clone());return response})());return;
+  }
+  if(url.origin!==self.location.origin)return;
+  if(url.pathname===new URL("./release.json",self.location).pathname){event.respondWith(fetch(request,{cache:"no-store"}));return}
+  event.respondWith((async()=>{
+    const cache=await caches.open(VERSION),hit=await cache.match(request.mode==="navigate"?absolute("./index.html"):request,{ignoreSearch:true});
+    return hit||fetch(request);
+  })());
 });

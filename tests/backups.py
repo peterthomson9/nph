@@ -49,11 +49,11 @@ async def main():
     assert result
     result=await page.evaluate("""async()=>{const f=await makeBackup(),before=localStorage.getItem(LKEY);db={};let rejected=false;try{await applyBackup(f)}catch(e){rejected=true}finally{db=null}return rejected&&before===localStorage.getItem(LKEY)}""")
     assert result
-    # Backwards compatibility: a real saved v2.100 file is accepted by v2.101.
+    # Backwards compatibility: a real saved v2.100 file is accepted by v2.102.
     legacy_text=(ROOT/'fixtures/backups/v1-2.100.json').read_text(encoding='utf-8')
     legacy=json.loads(legacy_text)
     assert legacy['payload']['appVersion']=='2.100'
-    assert file['payload']['appVersion']=='2.101'
+    assert file['payload']['appVersion']==await page.evaluate('NPH_V')
     parsed=await page.evaluate('async text => await parseBackup(text)',legacy_text)
     assert parsed==legacy
     compatibility=await page.evaluate('async()=>{const f=await makeBackup();f.payload.appVersion="999.0";f.sha256=await backupDigest(f.payload);return (await parseBackup(JSON.stringify(f))).payload.appVersion}')
