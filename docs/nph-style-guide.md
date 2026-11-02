@@ -630,3 +630,7 @@ Recipe headers fill behind their floating visible sheet handle. Navigation anima
 | Pass | Date | App version | Area | Result |
 |---|---|---|---|---|
 | 53 | 2 Nov 2026 | 2.107 | Approved Stock headers, grouped notices, recipe top and motion | Disposable Brave: 320/400px light/dark, expanded lists/controls, source-name/semantic highlights, cart/count centres, recipe handle/top, 200ms hold and reduced motion. Dropdown cutoff correction additionally checked at 640/900px heights: complete opening rows, opaque footer, no navigation overlap and last item reachable. Exact snapshot/live geometry and scroll stability checked across all page directions. Only affected local surfaces were visually inspected; native Android system bars await phone verification. |
+
+Owner correction, v2.108: remove Scroll for more and End of list from both planners' checklists. Keep an unlabelled 8px solid bottom edge, internal scrolling and full last-item access. This supersedes the footer-label wording above.
+
+| 54 | 2 Nov 2026 | 2.108 | Checklist footer text removal | Local disposable Brave, light/dark at 320/400px and 640/900px heights: no footer text, complete opening rows, solid bottom edge, no navigation overlap and last item fully reachable. |

@@ -2562,7 +2562,7 @@ function setQty(k,q){const cur=stockOf(k);put("stock",k,{...cur,out:cur.out!==fa
 
 /* ================= Meal planner (one engine, two pages) ================= */
 const PLANNERS={};
-const NPH_V=window.NPH_VERSION||"2.107";
+const NPH_V=window.NPH_VERSION||"2.108";
 function Planner(cfg){
   const id=cfg.id, R=cfg.R, T=cfg.T, IC=cfg.IC, BLK=cfg.BLK, ANCHOR=cfg.anchor;
   const P={id,cfg};
@@ -3784,7 +3784,7 @@ function Planner(cfg){
     // At the top, end on a complete row; the opaque footer stays outside scroll.
     if(overflow&&scroller.scrollTop<1){const top=scroller.getBoundingClientRect().top;const ends=[...scroller.querySelectorAll('.hughead,.hurow')].filter(el=>el.getClientRects().length).map(el=>el.getBoundingClientRect().bottom-top).filter(y=>y<=height);if(ends.length)height=Math.max(...ends)}
     scroller.style.maxHeight=height+'px';
-    const status=()=>{foot.textContent=scroller.scrollTop+scroller.clientHeight>=scroller.scrollHeight-2?'End of list':'Scroll for more'};scroller.onscroll=status;status();
+    foot.textContent='';foot.setAttribute('aria-hidden','true');
   }
   window.addEventListener('resize',()=>{if(huOpen)requestAnimationFrame(fitHu)});
   function huGroup([,cls,icon,,act]){
@@ -5820,7 +5820,7 @@ updStick();requestAnimationFrame(()=>requestAnimationFrame(scrollToToday));setTi
 .stick.s2 .hudrop.open{padding-top:6px;border:1px solid var(--line);grid-template-rows:minmax(0,1fr) auto}
 .hudrop.open .hudin{overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
 .hudrop .hulst{padding:4px 0 8px;gap:5px}
-.hufoot{display:none;align-items:center;justify-content:center;min-height:28px;border-top:1px solid var(--line);font:600 var(--fs-micro) var(--body);color:var(--muted);background:var(--surface)}
+.hufoot{display:none;min-height:8px;background:var(--surface)}
 .hudrop.open .hufoot:not([hidden]){display:flex}
 .hudrop.open .hurow{animation:none}
 .hugroup{border:1px solid var(--line);border-radius:11px;background:var(--surface);overflow:hidden}

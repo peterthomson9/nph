@@ -15,7 +15,8 @@ async def main():
      assert bounds['foot']>=bounds['edge']-1,bounds
      await pg.screenshot(path=str(OUT/f'no-clip-{theme}-{width}-{height}.png'))
      await pg.locator('#pn-hud .hudin').evaluate('e=>e.scrollTop=e.scrollHeight');await pg.wait_for_timeout(250)
-     assert await pg.locator('#pn-hud .hufoot').inner_text()=='End of list'
+     assert await pg.locator('#pn-hud .hufoot').inner_text()==''
+     assert await pg.locator('#pn-hud .hufoot').get_attribute('aria-hidden')=='true'
      assert await pg.locator('#pn-hul .hugroup').last.evaluate("e=>{const r=e.getBoundingClientRect(),s=e.closest('.hudin').getBoundingClientRect();return r.bottom<=s.bottom+1}")
      await c.close()
   await b.close();print('PASS: full rows at the dropdown edge, opaque footer, last item reachable and no navigation overlap at 320/400px, 640/900px heights, light/dark.')
