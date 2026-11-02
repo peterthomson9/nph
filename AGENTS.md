@@ -9,6 +9,7 @@ For **all visual work**, including text, highlights, controls and windows:
 - For larger visible changes, prepare matched Before/After previews from the real app in isolated local copies, explain the effect and ask P to approve the concrete result before changing the canonical app.
 - For major redesigns, give 2–3 distinct options with trade-offs and representative previews, then seek approval for the chosen design. Do not break a larger change into small edits to bypass this policy. An already selected exact preview does not require repeated approval.
 - Check affected views in light/dark and 320px/400px phone layouts, including relevant text wrapping, focus, selection, warning and expanded states. Update the visual pass log and release notes. Do not claim the whole app was visually verified when only specific surfaces were checked.
+- Every window, modal, popup and dropdown must use the shared Back-history registry. Mobile Back/back-swipe dismisses the newest open window before leaving the current page; other close methods remove its history entry. Nested disclosures within one dropdown do not create separate windows. See the v2.110 rulebook entry and tests/checklist-2110.py.
 
 For new or substantially changed Lil H recipes/ingredients:
 

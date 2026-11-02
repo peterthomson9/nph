@@ -2562,7 +2562,7 @@ function setQty(k,q){const cur=stockOf(k);put("stock",k,{...cur,out:cur.out!==fa
 
 /* ================= Meal planner (one engine, two pages) ================= */
 const PLANNERS={};
-const NPH_V=window.NPH_VERSION||"2.109";
+const NPH_V=window.NPH_VERSION||"2.110";
 function Planner(cfg){
   const id=cfg.id, R=cfg.R, T=cfg.T, IC=cfg.IC, BLK=cfg.BLK, ANCHOR=cfg.anchor;
   const P={id,cfg};
@@ -2977,10 +2977,11 @@ function Planner(cfg){
     box.innerHTML=h}
   /* v2.82: bring a meal or a day to the middle of the screen and highlight it */
   const inRange=n=>{if(rFrom==null)defRange();if(n<rFrom)rFrom=weekOf(n);if(n>rTo)rTo=weekOf(n)+6;P.render()};
-  P.focusMeal=(sl,n,colour,tag)=>{inRange(n);const g=sl==="K"?root.querySelector(`.day[data-n="${n}"] .row.bakerow`):root.querySelector(`.grp[data-n="${n}"][data-pos="${orderOf(n).indexOf(sl)}"]`);
+  const mealTarget=(sl,n,tag)=>{const g=sl==="K"?root.querySelector(`.day[data-n="${n}"] .row.bakerow`):root.querySelector(`.grp[data-n="${n}"][data-pos="${orderOf(n).indexOf(sl)}"]`);
     const own=g&&tag?(tag==="m"?g.querySelector('.meal:not([data-ik^="p"]):not([data-ik^="n"])'):g.querySelector(`.meal.who${tag}`))?.closest('.row'):null;
-    const el=own||(g?(g.classList.contains("row")?g:g.querySelector(".row")||g):root.querySelector(`.day[data-n="${n}"]`));window.nphGlide(el,()=>window.nphFlash(el,colour))};
-  P.focusDay=(n,colour)=>{inRange(n);const el=root.querySelector(`.day[data-n="${n}"]`);window.nphGlide(el,()=>window.nphFlash(el,colour))};
+    return own||(g?(g.classList.contains("row")?g:g.querySelector(".row")||g):root.querySelector(`.day[data-n="${n}"]`))};
+  P.focusMeal=(sl,n,colour,tag,done)=>{inRange(n);const el=mealTarget(sl,n,tag);window.nphGlide(el,done||(()=>window.nphFlash(el,colour)))};
+  P.focusDay=(n,colour,done)=>{inRange(n);const el=root.querySelector(`.day[data-n="${n}"]`);window.nphGlide(el,done||(()=>window.nphFlash(el,colour)))};
   P.showDay=(n,reset,smooth)=>{if(rFrom==null||reset)defRange();if(n<rFrom)rFrom=weekOf(n);if(n>rTo)rTo=weekOf(n)+6;P.render();jumpTo(n,smooth===true)};
   let selN=todayN(), pickN=null, calY=nToDate(selN).getUTCFullYear(), calM=nToDate(selN).getUTCMonth(), resetArm=0;
 
@@ -3817,12 +3818,12 @@ function Planner(cfg){
   }
   function huList(){const l=$(id+"-hul");if(!l)return;
     const groups=new Map();huItems.forEach(item=>{const group=huGroup(item),key=group[0];if(!groups.has(key))groups.set(key,{group,items:[]});groups.get(key).items.push(item)});
-    const row=([,cls,icon,text,act,detail])=>`<button type="button" class="hurow" style="--c:${huCol[cls]||"var(--muted)"}" data-hu="${act}" data-hucolor="${cls}"${huOpen?"":" tabindex=\"-1\""}>${ic(icon)}<span>${esc(text)}${detail?`<small class="husource">${esc(detail)}</small>`:""}</span>${ic("chev","hrchev")}</button>`;
-    l.innerHTML=[...groups.values()].map(({group:[key,label,icon,cls],items})=>{const open=huExpanded.has(key),first=items[0];return `<section class="hugroup" style="--c:${huCol[cls]||"var(--muted)"}"><div class="hughead"><button class="hujump" data-hu="${first[4]}" data-hucolor="${cls}">${ic(icon)}<span>${label}</span><small>${items.length}</small></button><button class="huexpand" data-hugroup="${key}" aria-expanded="${open}" aria-label="${open?"Hide":"Show"} ${label.toLowerCase()}" aria-controls="${id}-hu-${key}">${ic("chev")}</button></div><div id="${id}-hu-${key}" class="hugitems"${open?"":" hidden"}>${items.map(row).join("")}</div></section>`}).join("");requestAnimationFrame(fitHu);
+    const row=([,cls,icon,text,act,detail])=>`<button type="button" class="hurow" style="--c:${huCol[cls]||"var(--muted)"}" data-hu="${act}" data-hucolor="${cls}"${huOpen?"":" tabindex=\"-1\""}><span>${esc(text)}${detail?`<small class="husource">${esc(detail)}</small>`:""}</span></button>`;
+    l.innerHTML=[...groups.values()].map(({group:[key,label,icon,cls],items})=>{const open=huExpanded.has(key),first=items[0];return `<section class="hugroup" style="--c:${huCol[cls]||"var(--muted)"}"><div class="hughead"><button class="hujump" data-hujump="${key}" data-hu="${first[4]}" data-hucolor="${cls}">${ic(icon)}<span>${label}</span><small>${items.length}</small></button><button class="huexpand" data-hugroup="${key}" aria-expanded="${open}" aria-label="${open?"Hide":"Show"} ${label.toLowerCase()}" aria-controls="${id}-hu-${key}">${ic("chev")}</button></div><div id="${id}-hu-${key}" class="hugitems"${open?"":" hidden"}>${items.map(row).join("")}</div></section>`}).join("");requestAnimationFrame(fitHu);
   }
 
   P.setHu=on=>{on=!!on;const d=$(id+"-hud"),hu=$(id+"-hu");if(!d)return;if(on===huOpen&&d.classList.contains("open")===on)return;huOpen=on;huList();
-    d.classList.toggle("open",on);d.setAttribute("aria-hidden",String(!on));if(hu)hu.classList.toggle("huopen",on)};
+    d.classList.toggle("open",on);d.setAttribute("aria-hidden",String(!on));if(hu)hu.classList.toggle("huopen",on);if(window.nphSync)window.nphSync()};
   P.openHu=()=>P.setHu(!huOpen);
   /* v2.83: the recipe window's pills sit folded into one round icon per kind; tap one to send its pills out, tap a pill to fold them back */
   function recipeTags(r,sm,ik,review){if(!NUT)return R[r].tags||[];const ks=needOfSm(r,sm,factsAt(r,ik)?.recipe||R[r],!!factsAt(r,ik)).flatMap(a=>a.split("|")),has=t=>ks.some(k=>grpOf(k).includes(t));return [has("protein")?"Protein":null,has("iron")?"Iron-rich":null,has("starchy")?"Starchy food":null,has("vitc")?"Vitamin C":null,ks.some(k=>["carrot","sweetpotato","butternut","spinach"].includes(k))?"Vitamin A":null,ks.some(k=>["oats","weetabix","lentils","chickpeas"].includes(k))?"Fibre":null,has("dairy")?"Dairy":null,has("oily")?"Omega-3":null,...(review||servingReview(r,sm,ik)).fat.map(source=>`Fat source: ${source}`),...(R[r].tags||[]).filter(t=>/freez/i.test(t))].filter(Boolean)}
@@ -3832,10 +3833,22 @@ function Planner(cfg){
       ["sw","swap","var(--swap)",gsw?[[`${ic("swap")}Changed everywhere`,"sw"]]:[],"ingredient swaps"]].filter(c=>c[3].length);
     if(!cats.length)return "";
     return `<div class="chips pc">${cats.map(([k,icn,col,items,lab])=>`<button type="button" class="pi" data-pcat="${k}" style="--pcol:${col}" aria-expanded="false" aria-label="${items.length} ${lab}" title="${lab[0].toUpperCase()+lab.slice(1)}">${ic(icn)}${items.length>1?`<b>${items.length}</b>`:""}</button>${items.map(([h,c])=>`<span class="chip ${c}" data-pin="${k}" style="--pcol:${col}" hidden>${h}</span>`).join("")}`).join("")}</div>`}
-  P.huAct=(a,col)=>{const colour=huCol[col]||"var(--warn)";if(a.startsWith("cook:")){const [,tag,sl,n]=a.split(":");P.focusMeal(sl,+n,colour,tag);return}if(a.startsWith("meal:")){const [,sl,n]=a.split(":");P.focusMeal(sl,+n,colour);return}
-    if(a.startsWith("day:")){P.focusDay(+a.slice(4),colour);return}
-    if(a.startsWith("cooked:")){const fid=a.slice(7);window.nphFocusStock("cooked",id,()=>[...document.querySelectorAll(`#page-shop [data-fcard^="${CSS.escape(fid)}:"]`)],colour);return}
-    if(a.startsWith("buy:")){const ks=a.slice(4).split(",");window.nphFocusStock("buy",id,()=>ks.map(k=>document.querySelector(`#page-shop [data-tick="${CSS.escape(k)}"]`)).filter(Boolean).map(b=>b.closest(".item")),colour);return}if(a.startsWith("thaw:")){const [,fid,i]=a.split(":");openMove(fid,+i,"thaw",null,1);return}
+  const huTargets=a=>{const [kind,x,y,z]=a.split(":");
+    if(kind==="cook")return [mealTarget(y,+z,x)].filter(Boolean);
+    if(kind==="meal")return [mealTarget(x,+y)].filter(Boolean);
+    if(kind==="day")return [root.querySelector(`.day[data-n="${+x}"]`)].filter(Boolean);
+    if(kind==="cooked"||kind==="thaw")return [...document.querySelectorAll(`#page-shop [data-fcard^="${CSS.escape(x)}:"]`)];
+    if(kind==="buy")return x.split(',').map(k=>document.querySelector(`#page-shop [data-tick="${CSS.escape(k)}"]`)?.closest('.item')).filter(Boolean);
+    return a==="today"?[root.querySelector('.day.today')].filter(Boolean):[]};
+  P.jumpHu=key=>{const items=huItems.filter(item=>huGroup(item)[0]===key);if(!items.length)return;const col=huGroup(items[0])[3],colour=huCol[col]||"var(--warn)",first=items[0][4];P.setHu(false);
+    const highlight=()=>{const top=stickH(),bottom=document.querySelector('.tabbar')?.getBoundingClientRect().top||innerHeight;
+      [...new Set(items.flatMap(item=>huTargets(item[4])))].filter(el=>{const r=el.getBoundingClientRect();return el.getClientRects().length&&r.width>0&&r.height>0&&r.bottom>top&&r.top<bottom&&r.right>0&&r.left<innerWidth&&(key!=="expired"||el.dataset.expired==="true")}).forEach(el=>window.nphFlash(el,colour))};
+    P.huAct(first.startsWith('thaw:')?'cooked:'+first.split(':')[1]:first,col,highlight)};
+  P.huAct=(a,col,done)=>{const colour=huCol[col]||"var(--warn)";if(a.startsWith("cook:")){const [,tag,sl,n]=a.split(":");P.focusMeal(sl,+n,colour,tag,done);return}if(a.startsWith("meal:")){const [,sl,n]=a.split(":");P.focusMeal(sl,+n,colour,null,done);return}
+    if(a.startsWith("day:")){P.focusDay(+a.slice(4),colour,done);return}
+    if(a.startsWith("cooked:")){const fid=a.slice(7);window.nphFocusStock("cooked",id,()=>[...document.querySelectorAll(`#page-shop [data-fcard^="${CSS.escape(fid)}:"]`)],colour,done);return}
+    if(a.startsWith("buy:")){const ks=a.slice(4).split(",");window.nphFocusStock("buy",id,()=>ks.map(k=>document.querySelector(`#page-shop [data-tick="${CSS.escape(k)}"]`)).filter(Boolean).map(b=>b.closest(".item")),colour,done);return}if(a.startsWith("thaw:")){const [,fid,i]=a.split(":");openMove(fid,+i,"thaw",null,1);return}
+    if(a==="today"&&done){P.focusDay(todayN(),colour,done);return}
     if(a==="today"){selN=todayN();pickN=null;P.showDay(selN,true)}
     else if(window.nphGoStock)window.nphGoStock(a,id)};
   function updFoldAll(){root.querySelectorAll("[data-foldall]").forEach(b=>{const secs=[...$(id+"-p-"+b.dataset.foldall).querySelectorAll(".fsec")];b.textContent=secs.some(s=>s.classList.contains("shut"))?"Expand all":"Collapse all"})}
@@ -4273,6 +4286,7 @@ function Planner(cfg){
     const ta=e.target.closest("[data-thawask]");if(ta){const [fid,i]=ta.dataset.thawask.split(":");openMove(fid,+i,"thaw",null,1);return}
     const hg=e.target.closest("[data-hugroup]");if(hg){e.huDone=true;const k=hg.dataset.hugroup;huExpanded.has(k)?huExpanded.delete(k):huExpanded.add(k);huList();return}
     if(e.target.closest("[data-hulist]")){e.huDone=true;P.openHu();return}
+    const hj=e.target.closest('[data-hujump]');if(hj){e.huDone=true;P.jumpHu(hj.dataset.hujump);return}
     const hr=e.target.closest(".hudrop [data-hu]");if(hr){P.setHu(false);P.huAct(hr.dataset.hu,hr.dataset.hucolor);return}
     const hu=e.target.closest("[data-hu]");if(hu){P.huAct(hu.dataset.hu,hu.dataset.hucolor);return}
     const act=e.target.closest("[data-act]");if(!act)return;
@@ -5136,13 +5150,13 @@ window.nphGlide=(el,done)=>{finishPageMotion();if(!el){if(done)done();return}con
 window.nphFlash=(el,colour)=>{if(!el)return;el.querySelectorAll(":scope>.nphfx").forEach(x=>x.remove());if(getComputedStyle(el).position==="static")el.style.position="relative";
   const fx=document.createElement("span");fx.className="nphfx";fx.style.setProperty("--flash",colour||"var(--warn)");fx.setAttribute("aria-hidden","true");fx.innerHTML="<i></i>";el.appendChild(fx);
   const done=()=>fx.remove();fx.firstChild.addEventListener("animationend",done);setTimeout(done,1500)};
-window.nphFocusStock=(view,who,find,colour)=>{window.nphGoStock(view,who);
+window.nphFocusStock=(view,who,find,colour,done)=>{window.nphGoStock(view,who);
   setTimeout(()=>{if(current!=="shop"||shopView!==view)return;let els=find();
     /* v2.83: folded groups don't draw their rows, so open them all, find the item, then fold back the ones it isn't in */
     if(!els.length&&shut.size){const was=new Set(shut);shut.clear();renderShop();els=find();
       const keep=new Set(els.map(el=>{const h=el.closest(".cat");const b=h&&h.querySelector("[data-cat]");return b&&b.dataset.cat}).filter(Boolean));
       was.forEach(k=>{if(!keep.has(k))shut.add(k)});saveShut();renderShop();els=find()}
-    if(els.length)window.nphGlide(els[0],()=>els.forEach(el=>window.nphFlash(el,colour)))},120)};
+    if(els.length)window.nphGlide(els[0],done||(()=>els.forEach(el=>window.nphFlash(el,colour))))},120)};
 window.nphGoStock=(v,who)=>{shopView=v==="cooked"?"cooked":"buy";if(who)foodWho=who;try{localStorage.setItem("nph-shopview",shopView);localStorage.setItem("nph-foodwho",foodWho)}catch(_){}go("shop",true)};
 function editAmt(btn){
   const k=btn.dataset.amt,def=btn.dataset.def,cur=stockOf(k).amt||def;
@@ -5645,6 +5659,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.type==="sea
     [["pn","page-np"],["lh","page-lilh"]].forEach(([id,pg])=>{const root=$(pg);
       r.push({id:id+"-panel",open:()=>!root.hidden&&["kitchen","recipes","safe"].some(k=>vis($(id+"-p-"+k))),close:()=>{const b=root.querySelector('[data-drop][aria-expanded="true"]');if(b)b.click()}});
       r.push({id:id+"-rq",open:()=>vis($(id+"-rq-box")),close:()=>{const b=root.querySelector("[data-rsearch]");if(b)b.click()}});
+      r.push({id:id+"-hu",open:()=>!root.hidden&&$(id+"-hud").classList.contains('open'),close:()=>PLANNERS[id].setHu(false)});
     });
     r.push({id:"shop-search",open:()=>vis($("shop-search")),close:()=>$("shop-sbtn").click()});
     r.push({id:"shop-cat",open:()=>vis($("shop-catpop")),close:()=>catOpen(false)});

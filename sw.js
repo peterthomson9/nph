@@ -1,5 +1,5 @@
 /* NPH app-file updates. Never clear localStorage, IndexedDB or non-NPH caches. */
-const VERSION="nph-2.109", APP_VERSION="2.109";
+const VERSION="nph-2.110", APP_VERSION="2.110";
 const CORE=["./index.html","./release.json","./manifest.webmanifest","./icons/icon-180.png?v=ffd59f706c53","./icons/logo.svg","./icons/icon-192.png?v=7edc0bdd41e1","./icons/icon-512.png?v=3ba3462d8f90","./icons/maskable-512.png?v=e606a5c9a685"];
 const absolute=path=>new URL(path,self.location).href;
 const ownRelease=key=>/^nph-\d/.test(key);

@@ -640,3 +640,9 @@ Owner correction, v2.109: Ingredient swaps uses one existing compact row per sou
 | Pass | Date | App version | Area | Result |
 |---|---|---|---|---|
 | 55 | 2 Nov 2026 | 2.109 | Source-grouped swaps and dismiss-first behaviour | Disposable Brave, N & P/Lil H, light/dark at 320/400px: same-source leftovers/references stack, separate/fresh cookings remain distinct, source card highlighted, saved records unchanged. Outside tab/calendar presses dismiss without activating the control; second tap works. Dropdown edge/last-item checks retained. Only affected surfaces checked. |
+
+Owner correction, v2.110: keep category symbols and disclosure arrows in checklist headers; listed entries contain text/source date only. Header jumps use the same semantic wave on all visible matching destination items after the initial jump, excluding hidden/off-screen/unrelated targets. All windows and dropdowns use the shared mobile Back/back-swipe dismissal behaviour; nested disclosures stay within the same window.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 56 | 2 Nov 2026 | 2.110 | Header-only symbols, visible group highlights and Back dismissal | Local disposable Brave, N & P/Lil H, light/dark at 320/400px: header icons retained, row icons/arrows absent, multiple visible expired/source-meal targets highlighted, hidden/off-screen/unrelated targets skipped. Actual browser Back closes the checklist and a nested calendar in order without leaving the page or editing saves. Existing dropdown edge, source-link and dismiss-first checks retained. Only affected surfaces inspected; browser history drives native mobile back-swipe behaviour. |

@@ -10,6 +10,11 @@ Use logo family B across installed app artwork and shared page icons. Follow the
 
 ## 0. Core rules (draft 30 Oct 2026, app v2.74, for P to check)
 
+### v2.110 all-window Back and checklist header actions (2 Nov 2026)
+
+- All windows, dialogs, popups and dropdowns, including Things to check today, must register with the app's shared Back-history handler. Mobile Back or its back-swipe closes the newest open window first, leaving the current app page intact. Nested windows close in reverse opening order. Closing by an outside tap, item link, close button or Escape removes that window's history entry so no stale Back step remains. Opening a subgroup within a dropdown is a disclosure, not a new window/history step. Apply this to every future window too.
+- Checklist category symbols belong in group headers only; listed entries use text and the existing source-date line without repeated symbols or arrows. Individual entries jump/highlight their own target. A group header still jumps to its first item, then highlights every matching target currently visible between the pinned toolbar and bottom navigation, using its notification colour. Skip unrelated, hidden, collapsed and off-screen targets; do not scroll again or open extra groups/days to highlight them. These are view/history operations only, preserving C22 source facts, portions, household saves and device-local Undo.
+
 ### v2.109 source-grouped ingredient notices (2 Nov 2026)
 
 - C22/C23: Ingredient swaps notices stack by the named cooking/source, not by portion or leftover date. Show one effective English meal name plus Meal cooked [source date], or Meal to cook [date] for future cookings. Distinct cookings of the same recipe, fresh one-day meals and separate split-person cookings remain distinct. Natural leftovers and explicit fridge/freezer assignments from the same source share one notice. A selection jumps to and highlights the source cook-day card, including the correct person's split row. If old manually stored food has no recorded source card, link to its named Cooked entry instead of inventing a source meal.
