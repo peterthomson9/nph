@@ -5,7 +5,7 @@ https://peterthomson9.github.io/nph/
 
 An older Claude artifact also exists at https://claude.ai/code/artifact/151e0bb8-8974-437f-bb72-b7c8c313493c, but that is not the phone deployment.
 
-It plans meals for P (Peter) and N, and for their baby Lil H, and tracks stock, a shopping list and cooked food in the fridge and freezer. The GitHub Pages build currently saves separately in each phone's browser. Its Claude database hook does not run on GitHub Pages.
+It plans meals for P (Peter) and N, and for their baby Lil H, and tracks stock, a shopping list and cooked food in the fridge and freezer. The GitHub Pages build saves locally and supports opt-in Firebase household syncing. Phones remain separate until explicitly connected.
 
 ## Safety
 
@@ -34,19 +34,17 @@ From v2.104, IndexedDB is authoritative for household saves. Do not restore, cle
 - `docs/nph-style-guide.md`: the visual standard (tokens, text scale, buttons, dialogs, wording).
 - `docs/nph-changelog.md`: one line per change.
 
-## Future phone sync
+## Phone sync rollout
 
-- P wants sync later, after other app changes. No Firebase project exists yet; do not set one up or switch storage until P is ready.
-- Both phones currently show v2.83. P's phone is the main copy to seed the shared store; preserve its data and do not let an empty database replace it.
-- For a conflict on the same saved item, the last successful shared write wins (C34, decided 1 Nov 2026). Remove the unused P/N conflict selector when sync is implemented. Undo stays on the phone that made the change (C33).
+Firebase project `nph-kitchen` is created. v2.114 was approved by P; production rule deployment and phone connection remain. P's phone is the starting copy; never let empty/incomplete remote data replace it. See `docs/firebase-sync.md`. No production seed has occurred. C34 remains last successful server write wins; C33 Undo remains local and cannot reverse a later remote change. Preserve the durable outbox, checkpoint deduplication, membership rules and internal schema-2 older-app guard. Run `python tests/sync.py` in addition to the existing required release gate when changing this protocol. Never test against production or saved phones.
 
 ## Planned next
 
-Implemented v2.112: read-only rule checker, seeded mixed-action stress tests and permanent reproductions. Run `python tools/verify-release.py` before every publish; see `docs/rule-checker.md` for coverage, long runs, reports and replay. Every confirmed new bug needs a committed regression in that gate. Phone syncing remains a later implementation step.
+Implemented v2.112: read-only rule checker, seeded mixed-action stress tests and permanent reproductions. Run `python tools/verify-release.py` before every publish; see `docs/rule-checker.md` for coverage, long runs, reports and replay. Every confirmed new bug needs a committed regression in that gate. Phone syncing is implemented in v2.114; production rules and the controlled phone connection remain.
 
 ## Current version
 
-v2.113 (3 Nov 2026). Phones may retain an older cached version until its update is installed. Verify the hosted version when publishing. See the end of `docs/nph-changelog.md` for what's in each release.
+v2.114 (3 Nov 2026). Phones may retain an older cached version until its update is installed. Verify the hosted version when publishing. See the end of `docs/nph-changelog.md` for what's in each release.
 
 ## Working with P
 

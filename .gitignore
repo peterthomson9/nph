@@ -6,3 +6,6 @@ tests/roundtrip-backup.json
 tests/__pycache__/
 tests/**/__pycache__/
 tests/rules/failures/
+
+node_modules/
+*-debug.log

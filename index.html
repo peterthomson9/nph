@@ -2349,7 +2349,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-tundo]");i
 /* ================= Store: shared database when available, this phone otherwise ================= */
 const S={stock:{},custom:{},pn:{},lh:{},food:{},notes:{},items:{},favs:{}};
 const COLS=Object.keys(S);
-let db=null, syncMode="starting", readOnly=false, dragging=false, editing=false, needRender=false;
+let db=null, syncMode="starting", readOnly=!!NPH_STORE.getSync(), dragging=false, editing=false, needRender=false;
 const LKEY="nph-kitchen-v1";
 COLS.forEach(c=>S[c]=JSON.parse(JSON.stringify(NPH_STORE.initial[c])));
 function saveLocal(){return NPH_STORE.save(S).catch(error=>{storageChanged();throw error})}
@@ -2409,26 +2409,11 @@ async function work(){
 let rafId=0;
 function schedule(){if(dragging||editing){needRender=true;return}if(rafId)return;rafId=requestAnimationFrame(()=>{rafId=0;renderAll()})}
 function setSync(){
+  if(window.nphShared){const c=window.nphShared;readOnly=!!NPH_STORE.conflict||c.locked||c.busy;const cls=NPH_STORE.error||c.error||readOnly?"ro":c.live&&!c.pending&&c.online?"live":"local";document.querySelectorAll("[data-sync]").forEach(el=>{el.className="sync "+cls;el.innerHTML=`<i></i><span class="sl">${esc(c.label)}</span><span class="ss">${c.live&&!c.pending&&c.online&&!c.error?"Shared":c.pending?"Pending":"This phone"}</span>`;el.title=c.label});return}
   const [cls,txt,sh]=readOnly?["ro","View only","View only"]:syncMode==="live"?["live","Shared · live","Live"]:syncMode==="starting"?["","Connecting…","…"]:NPH_STORE.error?["ro","Changes not saved","Not saved"]:NPH_STORE.pending?["","Saving on this phone…","Saving…"]:["local","Saved on this phone only","This phone"];
-  document.querySelectorAll("[data-sync]").forEach(el=>{el.className="sync "+cls;el.innerHTML=`<i></i><span class="sl">${txt}</span><span class="ss">${sh}</span>`;el.title=syncMode==="local"?"Open the app from its claude.ai link to share changes with each other":""});
+  document.querySelectorAll("[data-sync]").forEach(el=>{el.className="sync "+cls;el.innerHTML=`<i></i><span class="sl">${txt}</span><span class="ss">${sh}</span>`;el.title=window.nphShared?.label||"Saved on this phone only"});
 }
-function connect(){
-  const use=window.claude&&typeof window.claude.use==="function"?window.claude.use("db"):Promise.resolve(null);
-  use.then(d=>{
-    if(!d){syncMode="local";setSync();return}
-    db=d;syncMode="live";setSync();
-    COLS.forEach(col=>{
-      d.collection(col).onSnapshot(snap=>{
-        const m={};snap.docs.forEach(doc=>{if(doc.exists)m[doc.id]=doc.data()});
-        pend.forEach(p=>{if(p.col===col){if(p.data===null)delete m[p.id];else m[p.id]=p.data}});
-        S[col]=m;saveLocal().catch(()=>{});schedule();
-      },err=>{console.warn(err);if(err&&err.code==="revoked"){db=null;syncMode="local";setSync()}});
-    });
-    work();
-    const u=window.claude.use("user");
-    if(u)u.then(us=>{if(!us||!us.can)return;Promise.resolve(us.can("data.write")).then(w=>{if(w===false){readOnly=true;setSync()}}).catch(()=>{})}).catch(()=>{});
-  }).catch(()=>{syncMode="local";setSync()});
-}
+function connect(){syncMode="local";setSync();startShared().catch(error=>{sharedError=error.message;paintShared()})}
 /* ================= Cooked food in the fridge / freezer =================
    A "lot" is one cooking of a meal. Its portions sit in stacks: fridge (fresh or thawed) or freezer,
    so every portion made is in exactly one place. Planned meals use portions: fridge first (soonest eat-by),
@@ -2566,7 +2551,7 @@ function setQty(k,q){const cur=stockOf(k);put("stock",k,{...cur,out:cur.out!==fa
 
 /* ================= Meal planner (one engine, two pages) ================= */
 const PLANNERS={};
-const NPH_V=window.NPH_VERSION||"2.113";
+const NPH_V=window.NPH_VERSION||"2.114";
 function Planner(cfg){
   const id=cfg.id, R=cfg.R, T=cfg.T, IC=cfg.IC, BLK=cfg.BLK, ANCHOR=cfg.anchor;
   const P={id,cfg};
@@ -5322,7 +5307,7 @@ function applyTheme(){document.documentElement.dataset.theme=themePref;
   document.querySelectorAll('meta[name="theme-color"]').forEach(m=>m.remove());
   const m=document.createElement("meta");m.name="theme-color";m.content=bg;document.head.appendChild(m)}
 /* settings: the same for every page on this phone */
-let syncPri="new";try{syncPri=localStorage.getItem("nph-syncpri")||"new"}catch(_){}
+let sharedError="",sharedAdapter=null,sharedInvitation="";
 function seg(attr,cur,opts){return `<div class="setseg" role="group">${opts.map(([v,lab,st])=>`<button ${attr}="${v}" aria-pressed="${String(v)===String(cur)}"${st?` style="${st}"`:""}>${lab}</button>`).join("")}</div>`}
 /* Undo / Redo for the page Settings was opened from, with what was changed (v2.69) */
 let histOpen=false;
@@ -5401,7 +5386,8 @@ async function parseBackup(text){
   migrateBackupData(p);
   return file;
 }
-function backupLocalOnly(){if(db||syncMode!=="local"||pend.size||working||readOnly)throw Error("Restore is available only in phone-only mode. Shared data has not been changed.")}
+function backupLocalOnly(){
+  if(NPH_STORE.getSync())throw Error("Shared data cannot be replaced from this phone. Save a backup; shared recovery needs a separate household confirmation.");if(db||syncMode!=="local"||pend.size||working||readOnly)throw Error("Restore is available only in phone-only mode. Shared data has not been changed.")}
 function backupStatus(message,error=false){const el=$("backup-status");if(el){el.textContent=message;el.style.color=error?"var(--bad)":"var(--muted)"}}
 function backupSection(){return `<section class="sgrp"><h4>Backups</h4><div class="srow"><div class="stx"><b>Keep a copy outside the app</b><small>Save plans, stock, cooked food and notes to a file on your phone.</small></div><div class="acts two"><button class="todaybtn" data-backup-save>Save backup</button><button class="todaybtn" data-backup-open>Restore backup</button></div><input type="file" id="backup-file" accept=".json,application/json" hidden><small id="backup-status" role="status" aria-live="polite"></small><p class="snote" id="storage-status" role="status">${NPH_STORE.error?"Changes have not saved. Keep this window open and save a backup.":"Recovery copies are kept automatically on this phone."}</p><button class="todaybtn" data-storage-recovery>Recovery copies</button></div></section>`}
 function showBackupRestore(file,recovery=false){
@@ -5507,7 +5493,7 @@ async function checkUpdates(manual=false){
 }
 function updateSafe(){
   if(editing||dragging||backupBusy||($("dlg").open&&!$("card").classList.contains("setcard")))throw Error("Finish your current edit before updating.");
-  if(pend.size||working)throw Error("Wait for your changes to finish syncing before updating.");
+  if(pend.size||working||window.nphShared?.busy)throw Error("Finish connecting this phone before updating.");
 }
 async function applyUpdate(){
   if(UPD.requested)return;
@@ -5549,7 +5535,7 @@ if(new URL(location.href).searchParams.has("nph-update")){
 function storageChanged(){
   const store=NPH_STORE;
   if(store.conflict)readOnly=true;
-  setSync();
+  setSync();window.nphShared?.pump();paintShared();
   const status=$("storage-status");if(status)status.textContent=store.error?"Changes have not saved. Keep this window open and save a backup.":store.pending?"Saving on this phone…":store.notice||"Recovery copies are kept automatically on this phone.";
   if(store.error&&!store.error.shown){store.error.shown=true;toast(store.error.name==="QuotaExceededError"?"Phone storage is full. Keep this window open and save a backup.":store.error.message||"Changes could not be saved. Keep this window open and save a backup.")}
   if(store.notice&&store.notice!==store.seenNotice){store.seenNotice=store.notice;toast(store.notice)}
@@ -5583,9 +5569,8 @@ function drawSettings(){const lay=PN.layout();
       <section class="sgrp"><h4>Meal plan</h4>
         ${row("cal","Layout","Auto: side by side on a big screen, one per row on a phone",seg("data-setlayout",lay,[[0,"Auto"],[1,`${ic("l1")}Cards`]]))}</section>
       ${updateSection()}
+      ${sharedSection()}
       ${backupSection()}
-      <section class="sgrp"><h4>Syncing</h4>
-        ${row("recalc","If both phones change the same thing","Changes that don't clash, like notes, are always kept from both",seg("data-syncpri",syncPri,[["new","Newest"],["P","P's"],["N","N's"]]))}</section>
       <p class="sver">NPH v${NPH_V}</p>
     </div>`}
 let phoneChoice=null;
@@ -5595,6 +5580,68 @@ function openPhonePrompt(){phoneChoice=null;$("card").className="card setcard ph
 document.addEventListener("click",e=>{if(!$("dlg").open||!$("card").classList.contains("phonecard"))return;
   const pick=e.target.closest("[data-phonepick]");if(pick){phoneChoice=pick.dataset.phonepick;$("card").querySelectorAll("[data-phonepick]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.phonepick===phoneChoice));$("card").querySelector("[data-phoneconfirm]").disabled=false;return}
   if(e.target.closest("[data-phoneconfirm]")&&["P","N"].includes(phoneChoice)){setMe(phoneChoice);showTheme();$("dlg").close()}});
+function sharedSection(){return `<section class="sgrp" id="shared-section"><h4>Shared household</h4><div data-shared-body>${sharedBody()}</div></section>`}
+function sharedBody(){
+ const c=window.nphShared,b=NPH_STORE.getSync(),status=sharedError||c?.label||"Preparing sign-in…";
+ const intro=`<p class="snote" data-shared-status role="status">${esc(status)}</p>`;
+ if(!c)return intro+`<button class="todaybtn" data-shared="load">Retry</button>`;
+ if(!c.user)return intro+`<p class="snote">Use your own Google account on each phone.</p><button class="todaybtn" data-shared="login">Sign in with Google</button>`;
+ let h=intro+`<p class="snote">${esc(c.user.email||"Signed in")}</p>`;
+ if(!b)h+=c.profile?`<button class="todaybtn" data-shared="existing">Use shared household</button>`:`<div class="acts two"><button class="todaybtn" data-shared="create">Create household</button><button class="todaybtn" data-shared="join">Join household</button></div><p class="snote">Create on P’s phone first. Join on N’s phone.</p>`;
+ else if(b.mode!=="connected")h+=`<button class="todaybtn" data-shared="retry">Finish connecting</button>`;
+ else h+=`<div class="acts two"><button class="todaybtn" data-shared="retry">Sync now</button>${c.profile?.owner?'<button class="todaybtn" data-shared="invite">Invite other phone</button>':""}</div><p class="snote">For the same item, the last successful shared write wins. Undo stays on this phone.</p>`;
+ if(sharedInvitation)h+=`<p class="snote">Invitation code · valid for 24 hours</p><input class="shared-code" readonly aria-label="Household invitation code" value="${esc(sharedInvitation)}"><button class="todaybtn" data-shared="copy">Copy code</button>`;
+ return h+`<button class="todaybtn" data-shared="logout">Sign out</button>`;
+}
+let sharedPaintKey="";
+function paintShared(){
+ const c=window.nphShared,body=document.querySelector('[data-shared-body]');if(!body)return;
+ const key=JSON.stringify([c?.user?.uid,c?.profile,NPH_STORE.getSync()?.mode,sharedError,sharedInvitation]);
+ if(sharedPaintKey!==key){body.innerHTML=sharedBody();sharedPaintKey=key}
+ const status=body.querySelector('[data-shared-status]');if(status)status.textContent=sharedError||c?.label||"Preparing sign-in…";
+ body.querySelectorAll('button').forEach(b=>b.disabled=!!c?.busy||b.dataset.shared==="logout"&&(!!c?.pumping||!!c?.pending&&c?.user?.uid===NPH_STORE.getSync()?.uid));
+}
+async function startShared(){
+ if(window.nphShared)return;
+ if(!window.NphFirebase)await new Promise((resolve,reject)=>{const s=document.createElement("script");s.src="./vendor/firebase.js";s.onload=resolve;s.onerror=()=>{s.remove();reject(Error("Sign-in files could not load. Reconnect and retry."))};document.head.append(s)});
+ sharedAdapter=NphFirebase.make();
+ window.nphShared=new NPH_SHARED.Connection({store:NPH_STORE,adapter:sharedAdapter,validate:validateBackupData,
+   canApply:()=>!editing&&!dragging&&!backupBusy&&(!$("dlg").open||$("card").classList.contains("setcard")),
+   onData:data=>{const changes=NPH_SHARED.changes(S,data),keys=new Set(changes.map(x=>x.col+"/"+x.id));for(const H of Object.values(HIST))for(const dir of ["undo","redo"])H[dir]=H[dir].filter(g=>!g.some(x=>keys.has(x.col+"/"+x.id)));COLS.forEach(c=>S[c]=data[c]);SHV++;schedule();histUi()},
+   onStatus:()=>{setSync();paintShared()}});
+ window.nphShared.online=navigator.onLine;
+ window.addEventListener("online",()=>{nphShared.online=true;nphShared.retry().catch(()=>{})});
+ window.addEventListener("offline",()=>{nphShared.online=false;nphShared.live=false;nphShared.emit()});
+ document.addEventListener("visibilitychange",()=>{if(!document.hidden)nphShared.pump()});
+ setInterval(()=>{nphShared.apply().catch(()=>{});if(nphShared.pending&&!nphShared.error)nphShared.pump()},2000);
+ await nphShared.start();paintShared();
+}
+function sharedConfirm(kind){
+ const create=kind==="create";
+ $("card").className="card setcard shared-confirm";
+ $("card").innerHTML=`<header><div class="ht"><h2>${create?"Create shared household":"Join shared household"}</h2></div><button class="close" aria-label="Close">×</button></header><div class="sets"><p class="snote">${create?"Use the plans, stock, cooked food and notes on this phone as the starting shared copy. Do this on P’s phone.":"Replace this phone’s plans, stock, cooked food and notes with the shared household. A recovery copy is kept on this phone."}</p>${!create&&!nphShared.profile?'<label class="snote" for="shared-code">Invitation code from P’s phone</label><input id="shared-code" class="shared-code" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="32">':""}<p class="snote">Download a backup before continuing.</p><div class="acts two"><button class="todaybtn" data-backup-save>Save backup</button><button class="rand" data-shared="${create?"confirm-create":"confirm-join"}">${create?"Use this phone’s copy":"Use shared copy"}</button></div><p class="snote" data-shared-confirm-status role="status"></p><button class="todaybtn" data-shared="cancel">Back to Settings</button></div>`;
+ if(!$("dlg").open)$("dlg").showModal();window.nphSync?.();
+}
+document.addEventListener("click",async e=>{
+ const button=e.target.closest('[data-shared]');if(!button)return;const action=button.dataset.shared;
+ try{
+  sharedError="";
+  if(action==="load"){await startShared();return}
+  if(action==="login"){if(location.protocol==="file:")throw Error("Open the NPH website in Chrome to sign in.");await sharedAdapter.signIn();return}
+  if(["create","join","existing"].includes(action)){sharedConfirm(action==="create"?"create":"join");return}
+  if(action==="cancel"){openSettings();return}
+  if(action==="copy"){await navigator.clipboard.writeText(sharedInvitation);toast("Invitation code copied");return}
+  if(action==="confirm-create"||action==="confirm-join"){
+   button.disabled=true;const code=$("shared-code")?.value.trim().toLowerCase()||"";
+   if(action==="confirm-create")await nphShared.create();else await nphShared.join(code);
+   openSettings();return;
+  }
+  if(action==="invite")sharedInvitation=await nphShared.invite();
+  else if(action==="retry")await nphShared.retry();
+  else if(action==="logout"){await nphShared.signOut();sharedInvitation=""}
+ }catch(error){sharedError=error.message;const status=document.querySelector('[data-shared-confirm-status]');if(status)status.textContent=sharedError;toast(sharedError)}
+ finally{if(button.isConnected)button.disabled=false;paintShared()}
+});
 function openSettings(){$("card").className="card setcard";$("dlg").classList.add("mid","sm");$("dlg").style.setProperty("--acc",`var(--${current==="shop"?"shop":current==="lilh"?"lilh":"np"})`);drawSettings();if(!$("dlg").open)$("dlg").showModal()}
 const setOpen=()=>$("dlg").open&&$("card").classList.contains("setcard");
 document.addEventListener("click",e=>{
@@ -5603,7 +5650,6 @@ document.addEventListener("click",e=>{
   if(e.target.closest("[data-histopen]")){histOpen=!histOpen;drawSettings();return}
   if(e.target.closest("[data-hist]"))setTimeout(()=>{if(setOpen())drawSettings()},0);
   const l=e.target.closest("[data-setlayout]");if(l){const c=+l.dataset.setlayout;PN.setLayout(c);LH.setLayout(c);drawSettings();return}
-  const sp=e.target.closest("[data-syncpri]");if(sp){syncPri=sp.dataset.syncpri;try{localStorage.setItem("nph-syncpri",syncPri)}catch(_){}drawSettings();return}
   if(e.target.closest("[data-themeopt],[data-meopt]"))setTimeout(()=>{if(setOpen())drawSettings()},0)});
 function showTheme(){document.querySelectorAll("[data-themeopt]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.themeopt===themePref));document.querySelectorAll("[data-meopt]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.meopt===ME))}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-meopt]");if(!t)return;setMe(t.dataset.meopt);showTheme();toast(`This is ${t.dataset.meopt}'s phone`)});
@@ -5720,7 +5766,7 @@ setInterval(dateTick,60000);
 renderAll();setSync();go(location.hash.slice(1)||"np");connect();
 setTimeout(()=>{if(!ME&&!$("dlg").open)openPhonePrompt()},900);
 updStick();requestAnimationFrame(()=>requestAnimationFrame(scrollToToday));setTimeout(scrollToToday,350);try{document.fonts.ready.then(()=>setTimeout(scrollToToday,0))}catch(_){}
-</script><script>
+</script><script src="./shared-core.js"></script><script>
 /* IndexedDB bootstrap: run the app only after its saved state is loaded. */
 (async()=>{
   const KEYS=["stock","custom","pn","lh","food","notes","items","favs"],LEGACY="nph-kitchen-v1",RECOVERY="nph-recovery-v1",MAX_COPIES=12;
@@ -5741,11 +5787,12 @@ updStick();requestAnimationFrame(()=>requestAnimationFrame(scrollToToday));setTi
     r.onblocked=()=>{clearTimeout(timer);reject(Error("Close other NPH windows and reload to open phone storage."))};
   })}
   try{
+    if(!window.NPH_SHARED)throw Error("NPH app files could not load. Reconnect and reload.");
     if(!("indexedDB" in window))throw Error("This browser cannot open NPH's phone storage.");
     const db=await open(),initialTx=db.transaction(["state","snapshots"],"readonly"),initialDone=complete(initialTx);
     let state=await request(initialTx.objectStore("state").get("current")),snapshots=await request(initialTx.objectStore("snapshots").getAll());await initialDone;
     const rawLegacy=localStorage.getItem(LEGACY);
-    if(state){if(state.schema!==1)throw Error("This saved data needs a newer version of NPH.");valid(state.data)}
+    if(state){if(![1,2].includes(state.schema)||state.schema===2&&state.sync?.protocol!==1)throw Error("This saved data needs a newer version of NPH.");valid(state.data)}
     else{
       const data=rawLegacy?valid(JSON.parse(rawLegacy)):empty(),now=Date.now();
       state={schema:1,revision:1,data:copy(data),updatedAt:now,appVersion:version,legacyBaseline:rawLegacy,lastSnapshotAt:now};
@@ -5757,7 +5804,7 @@ updStick();requestAnimationFrame(()=>requestAnimationFrame(scrollToToday));setTi
         if(existing){state=existing;snapshots=await request(tx.objectStore("snapshots").getAll())}else{tx.objectStore("state").put(state,"current");tx.objectStore("snapshots").put(migration);snapshots.push(migration)}
         await done;
       }catch(error){try{tx.abort()}catch(_){}await done.catch(()=>{});throw error}
-      if(state.schema!==1)throw Error("This saved data needs a newer version of NPH.");valid(state.data);
+      if(![1,2].includes(state.schema)||state.schema===2&&state.sync?.protocol!==1)throw Error("This saved data needs a newer version of NPH.");valid(state.data);
     }
     const store={initial:copy(state.data),pending:0,error:null,conflict:false,revision:state.revision,snapshots:[],onchange:null,notice:null};
     let tail=Promise.resolve(),localState=state;
@@ -5770,7 +5817,7 @@ updStick();requestAnimationFrame(()=>requestAnimationFrame(scrollToToday));setTi
       tail=job;job.catch(()=>{});return job;
     }
     function conflict(){const e=Error("Another NPH window saved changes. Save a backup of this window, then reload before editing.");e.name="NPHConflict";return e}
-    async function write(data,reason=null,legacyBaseline=localState.legacyBaseline){
+    async function write(data,reason=null,legacyBaseline=localState.legacyBaseline,options=null,group=null){
       if(store.conflict)throw conflict();
       valid(data);
       const tx=db.transaction(["state","snapshots"],"readwrite"),done=complete(tx);
@@ -5778,10 +5825,11 @@ updStick();requestAnimationFrame(()=>requestAnimationFrame(scrollToToday));setTi
         const disk=await request(tx.objectStore("state").get("current"));
         if(!disk||disk.revision!==localState.revision){tx.abort();await done.catch(()=>{});throw conflict()}
         const text=JSON.stringify(data),changed=text!==JSON.stringify(disk.data),now=Date.now();
-        if(!changed&&!reason&&legacyBaseline===disk.legacyBaseline){await done;return}
+        const sync=options?options.sync:NPH_SHARED.localSync(disk.sync||null,disk.data,data,group||undefined);
+        if(!changed&&!reason&&legacyBaseline===disk.legacyBaseline&&JSON.stringify(sync)===JSON.stringify(disk.sync||null)){await done;return}
         let snapshot=null;
         if(reason||changed&&now-(disk.lastSnapshotAt||0)>=30*60*1000){snapshot={id:crypto.randomUUID(),createdAt:now,reason:reason||"Automatic saved copy",appVersion:disk.appVersion||version,data:copy(disk.data)};tx.objectStore("snapshots").put(snapshot)}
-        const next={...disk,revision:disk.revision+1,data:copy(data),updatedAt:now,appVersion:version,legacyBaseline,lastSnapshotAt:snapshot?now:disk.lastSnapshotAt};
+        const next={...disk,schema:sync?2:1,sync,revision:disk.revision+1,data:copy(data),updatedAt:now,appVersion:version,legacyBaseline,lastSnapshotAt:snapshot?now:disk.lastSnapshotAt};
         tx.objectStore("state").put(next,"current");
         const all=await request(tx.objectStore("snapshots").getAll());
         const keep=all.sort((a,b)=>b.createdAt-a.createdAt).slice(0,MAX_COPIES),ids=new Set(keep.map(s=>s.id));
@@ -5789,10 +5837,15 @@ updStick();requestAnimationFrame(()=>requestAnimationFrame(scrollToToday));setTi
         await done;localState=next;store.revision=next.revision;snapshots=keep;metadata();
       }catch(error){try{tx.abort()}catch(_){}await done.catch(()=>{});throw error}
     }
-    store.save=data=>{const detached=copy(data);return enqueue(()=>write(detached))};
+    let actionGroup=null;
+    store.save=data=>{const detached=copy(data),group=actionGroup||(actionGroup=crypto.randomUUID());setTimeout(()=>{if(actionGroup===group)actionGroup=null},0);return enqueue(()=>write(detached,null,localState.legacyBaseline,null,group))};
     store.flush=async()=>{let pending;do{pending=tail;await pending}while(pending!==tail);if(store.error)throw store.error};
     store.read=()=>copy(localState.data);
-    store.replace=data=>{const detached=copy(data);return enqueue(()=>write(detached,"Before restoring data"))};
+    store.replace=data=>{const detached=copy(data);return enqueue(()=>{if(localState.sync)throw Error("Shared recovery needs a separately confirmed household replacement.");return write(detached,"Before restoring data")})};
+    store.getSync=()=>copy(localState.sync||null);
+    store.changeSync=(sync,reason=null,data=null)=>enqueue(()=>write(data||localState.data,reason,localState.legacyBaseline,{sync:copy(sync)}));
+    store.receiveShared=data=>{const remote=copy(data);return enqueue(()=>{const sync=copy(localState.sync);if(!sync||sync.mode!=="connected")throw Error("This phone is not connected.");return write(NPH_SHARED.overlay(remote,sync.queue),null,localState.legacyBaseline,{sync})})};
+    store.ackShared=upto=>enqueue(()=>{const sync=copy(localState.sync);if(!sync)throw Error("This phone is not connected.");sync.queue=sync.queue.filter(op=>op.seq>upto);return write(localState.data,null,localState.legacyBaseline,{sync})});
     store.getSnapshot=async id=>{
       await store.flush();const tx=db.transaction("snapshots","readonly"),done=complete(tx),s=await request(tx.objectStore("snapshots").get(id));await done;
       if(!s)throw Error("That recovery copy is no longer available.");valid(s.data);return copy(s);
@@ -5906,4 +5959,4 @@ updStick();requestAnimationFrame(()=>requestAnimationFrame(scrollToToday));setTi
 :root{padding-bottom:0}
 nav.tabbar{background:var(--surface);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media(prefers-reduced-motion:reduce){.huexpand .ic{transition:none}}
-</style></body></html>
+</style><style>.shared-code{box-sizing:border-box;width:100%;min-height:44px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:13px var(--body);overflow-wrap:anywhere}#shared-section .snote{overflow-wrap:anywhere}#shared-section button{white-space:normal;min-height:40px}#shared-section [data-shared-body]{display:grid;gap:10px}.shared-confirm .acts{flex-wrap:wrap}</style></body></html>

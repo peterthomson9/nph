@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signed() { return request.auth != null && request.auth.token.firebase.sign_in_provider == 'google.com'; }
+    function house(h) { return get(/databases/$(database)/documents/households/$(h)).data; }
+    function member(h) { return signed() && house(h).members.get(request.auth.uid, false) == true; }
+    function ready(h) { return member(h) && house(h).ready == true; }
+    function invitation(code) { return get(/databases/$(database)/documents/invites/$(code)).data; }
+    function joining(h) {
+      let next = request.resource.data;
+      let code = next.invite;
+      let i = invitation(code);
+      return signed() && resource.data.ready == true && resource.data.members.size() == 1
+        && next.diff(resource.data).affectedKeys().hasOnly(['members', 'invite'])
+        && next.members.size() == 2 && next.members.get(request.auth.uid, false) == true
+        && next.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid])
+        && i.household == h && i.createdAt + duration.value(1, 'd') > request.time && i.joinedUid == null
+        && getAfter(/databases/$(database)/documents/invites/$(code)).data.joinedUid == request.auth.uid;
+    }
+    match /households/{h} {
+      allow get: if signed() && (!exists(/databases/$(database)/documents/households/$(h)) || member(h));
+      allow list, delete: if false;
+      allow create: if signed() && request.resource.data.keys().hasOnly(['owner','members','schema','ready','createdAt'])
+        && request.resource.data.owner == request.auth.uid && request.resource.data.members.size() == 1
+        && request.resource.data.members.get(request.auth.uid, false) == true
+        && request.resource.data.schema == 1 && request.resource.data.ready == false && request.resource.data.createdAt == request.time;
+      allow update: if (member(h) && request.resource.data == resource.data)
+        || (member(h) && resource.data.owner == request.auth.uid && resource.data.ready == false
+          && request.resource.data.ready == true && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ready']))
+        || joining(h);
+      match /records/{record} {
+        allow read: if ready(h);
+        allow create, update: if member(h) && (house(h).ready || house(h).owner == request.auth.uid)
+          && request.resource.data.keys().hasOnly(['schema','col','id','value','deleted','writer','at'])
+          && request.resource.data.keys().hasAll(['schema','col','id','value','deleted','writer','at'])
+          && request.resource.data.schema == 1 && request.resource.data.col in ['stock','custom','pn','lh','food','notes','items','favs']
+          && request.resource.data.id is string && request.resource.data.id.size() > 0
+          && !(request.resource.data.id in ['__proto__','constructor','prototype'])
+          && record == request.resource.data.col + '!' + request.resource.data.id
+          && request.resource.data.deleted is bool && (request.resource.data.deleted == false || request.resource.data.value == null)
+          && request.resource.data.writer == request.auth.uid && request.resource.data.at == request.time;
+        allow delete: if false;
+      }
+      match /clients/{client} {
+        allow get: if ready(h);
+        allow list, delete: if false;
+        allow create, update: if ready(h) && request.resource.data.keys().hasOnly(['uid','seq'])
+          && request.resource.data.uid == request.auth.uid && request.resource.data.seq is int && request.resource.data.seq > 0
+          && (!exists(/databases/$(database)/documents/households/$(h)/clients/$(client))
+            || (resource.data.uid == request.auth.uid && request.resource.data.seq >= resource.data.seq));
+      }
+    }
+    match /users/{uid} {
+      allow get: if signed() && request.auth.uid == uid;
+      allow list, delete: if false;
+      allow create, update: if signed() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['household'])
+        && getAfter(/databases/$(database)/documents/households/$(request.resource.data.household)).data.members.get(uid, false) == true
+        && (!exists(/databases/$(database)/documents/users/$(uid)) || request.resource.data == resource.data);
+    }
+    match /invites/{code} {
+      allow get: if signed();
+      allow list, delete: if false;
+      allow create: if signed() && code.matches('^[a-f0-9]{32}$') && request.resource.data.keys().hasOnly(['household','owner','createdAt','joinedUid'])
+        && ready(request.resource.data.household) && house(request.resource.data.household).owner == request.auth.uid
+        && request.resource.data.owner == request.auth.uid && request.resource.data.joinedUid == null
+        && request.resource.data.createdAt == request.time;
+      allow update: if signed() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinedUid'])
+        && request.resource.data.joinedUid == request.auth.uid && resource.data.createdAt + duration.value(1, 'd') > request.time
+        && (resource.data.joinedUid == null || resource.data.joinedUid == request.auth.uid)
+        && getAfter(/databases/$(database)/documents/households/$(resource.data.household)).data.members.get(request.auth.uid, false) == true;
+    }
+  }
+}

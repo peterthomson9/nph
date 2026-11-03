@@ -10,6 +10,14 @@ Use logo family B across installed app artwork and shared page icons. Follow the
 
 ## 0. Core rules (draft 30 Oct 2026, app v2.74, for P to check)
 
+### v2.114 private household sync (3 Nov 2026)
+
+- C22/C32: P explicitly creates the shared starting copy; N explicitly joins through a private, expiring invitation. Empty or incomplete remote storage must never replace the main phone. Joining preserves a pre-replacement local recovery copy. Only household members may read/write; Google sign-in and P/N labels alone confer no household access.
+- C32/C34: household saves and the offline outbox commit atomically on the phone. Group related changes in one server transaction; retain unsuccessful operations for retry. Server checkpoints prevent replay after a successful commit whose local acknowledgement was lost. Last successful server write wins for the same record; independent record edits remain. Deletion tombstones prevent stale resurrection. Client timestamps do not decide conflicts.
+- C33: remote writes never become local Undo steps. Invalidate local Undo/Redo groups touching a later remote change, so Undo cannot reverse that other phone's work. Keep identity, theme and view preferences local.
+- Preserve IDs, recorded portions/source facts and v1 backup compatibility. Connected internal state uses schema 2 so older app code cannot save without the outbox; exported data schema stays 1. Local restore remains blocked while connected. Incoming remote data must pass the existing backup/data validator before replacing phone data. Defer visible incoming changes while an editor is open.
+- Settings uses the existing window and Back registry. Clearly distinguish phone-only saves, pending/offline changes, shared up-to-date state, connection failures and sign-in requirements. Bundle/cache Firebase assets with the app. Run emulator security and two-phone persistence checks in the release gate; actual production Google sign-in and physical phones still need a controlled connection check. See firebase-sync.md.
+
 ### v2.113 shifted-batch recipe identity (3 Nov 2026)
 
 - C22/C23/C26: original L/D batch-position keys remain template identities after a batch moves; they are never interpreted as actual dates for a storage assignment. Only dated day/breakfast keys or an explicit named-lot reference can resolve that assignment. A source must belong to the same profile and recipe. Apply the same distinction to names, ingredient changes, nutrition/preparation checks, recipe windows and Re-plan.
@@ -236,9 +244,9 @@ The few truths every feature must respect. **How this is used (P, 31 Oct 2026):*
 
 | # | Rule |
 |---|---|
-| C32 | **To build for the GitHub Pages app:** Both phones show the same plan, stock and stored food. A saved change on one phone reaches the other within seconds while online. Until sync is built, each phone saves its own data. P's phone is the main copy for the first shared upload (decided 1 Nov 2026). |
+| C32 | **Built v2.114; opt-in connection required:** Both phones show the same plan, stock and stored food. A saved change on one phone reaches the other within seconds while online. Until a phone is explicitly connected, it saves its own data. P's phone is the main copy for the first shared upload (decided 1 Nov 2026). |
 | C33 | Undo history belongs to each phone and is lost when the app closes, so one phone can't undo the other's change. |
-| C34 | **Decided 1 Nov 2026, to build with C32:** If both phones change the same saved item, the last successful write to the shared database wins. Remove the unused "Newest / P's / N's" conflict choice from Settings when sync is built. |
+| C34 | **Built v2.114, decided 1 Nov 2026:** If both phones change the same saved item, the last successful write to the shared database wins. Remove the unused "Newest / P's / N's" conflict choice from Settings when sync is built. |
 
 ### Questions for P
 

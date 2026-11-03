@@ -660,3 +660,11 @@ Keep the existing card/status components and semantic colours. A timestamped tha
 | Pass | Date | App version | Area | Result |
 |---|---|---|---|---|
 | 58 | 3 Nov 2026 | 2.112 | Existing storage status and date-warning corrections | Local disposable phone checks retain both profiles/themes at 320/400px through the Cooked, source, pill and storage regression gate. Existing typography, warning outlines, source links, actions and portions retained. Only affected surfaces checked; checker output is development JSON/text. |
+
+### Shared household Settings (v2.114, 3 November 2026)
+
+Reuse the existing Settings sections, semantic status pill, buttons and modal/Back behaviour. Place Shared household above Backups. Sign in with Google precedes explicit Create/Join choices; replacement confirmations explain the starting/replaced copy and offer Save backup. Owner-only invitations use a selectable/copyable code. Wrap account text and actions at 320px; long Settings content scrolls within the existing sheet. Keep connection errors actionable. No changes to main page navigation or meal cards. P approved the exact preview; implemented in the canonical app.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 59 | 3 Nov 2026 | 2.114 | Shared household sign-in, Create/Join, confirmation, invitation and error | Captured matched real-app Before/After in disposable browsers, light/dark at 320/400px. Automated horizontal-overflow and actual Back-dismissal checks pass. Inspected representative sign-in, choices, join/focus and invitation states; sheets use the existing scroll area. All 22 release checks pass, including emulator permissions and two-phone persistence. Production Google OAuth/native phone behaviour remains to be checked after deployment. |

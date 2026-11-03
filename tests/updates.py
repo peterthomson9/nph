@@ -11,6 +11,8 @@ class Quiet(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):self.send_header('Cache-Control','no-store');super().end_headers()
 def deploy(target,version='2.105',broken=False):
     shutil.copytree(SOURCE/'icons',target/'icons',dirs_exist_ok=True)
+    shutil.copytree(SOURCE/'vendor',target/'vendor',dirs_exist_ok=True)
+    shutil.copy2(SOURCE/'shared-core.js',target/'shared-core.js')
     for name in ['index.html','sw.js','release.json','manifest.webmanifest']:shutil.copy2(SOURCE/name,target/name)
     for file in ['index.html','sw.js','release.json']:
         path=target/file
@@ -90,8 +92,8 @@ async def main():
     await ctx.close()
     print('PASS: downloaded activation and reopening offline',flush=True)
     # Real v2.83 cache + one-time transition navigation -> update-aware release.
-    old_html=subprocess.check_output(['git','show','991934c:index.html'],cwd=SOURCE,text=True,encoding='utf-8')
-    old_sw=subprocess.check_output(['git','show','991934c:sw.js'],cwd=SOURCE,text=True)
+    old_html=subprocess.check_output(['git','show','991934c:index.html'],cwd=os.environ.get('NPH_HISTORY_REPO',SOURCE),text=True,encoding='utf-8')
+    old_sw=subprocess.check_output(['git','show','991934c:sw.js'],cwd=os.environ.get('NPH_HISTORY_REPO',SOURCE),text=True)
     (webroot/'index.html').write_text(old_html,encoding='utf-8');(webroot/'sw.js').write_text(old_sw,encoding='utf-8')
     legacy=await new_context();old=await legacy.new_page();old.on('pageerror',lambda e:errors.append(str(e)))
     await old.goto(url);await old.evaluate("async()=>{await navigator.serviceWorker.register('./sw.js');await navigator.serviceWorker.ready}")

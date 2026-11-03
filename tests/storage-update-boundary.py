@@ -9,6 +9,8 @@ class Quiet(http.server.SimpleHTTPRequestHandler):
  def end_headers(self):self.send_header('Cache-Control','no-store');super().end_headers()
 def deploy(target,version):
  shutil.copytree(SOURCE/'icons',target/'icons',dirs_exist_ok=True)
+ shutil.copytree(SOURCE/'vendor',target/'vendor',dirs_exist_ok=True)
+ shutil.copy2(SOURCE/'shared-core.js',target/'shared-core.js')
  for name in ['index.html','sw.js','release.json','manifest.webmanifest']:shutil.copy2(SOURCE/name,target/name)
  for name in ['index.html','sw.js','release.json']:
   path=target/name;path.write_text(path.read_text(encoding='utf-8').replace(__import__('re').search(r'const NPH_V=window.NPH_VERSION\|\|"([^"]+)"', (SOURCE/'index.html').read_text(encoding='utf-8')).group(1),version),encoding='utf-8')
@@ -17,7 +19,7 @@ async def main():
   deploy(pathlib.Path(folder),'2.105')
   # Start with the real previously published localStorage app and worker.
   for name in ['index.html','sw.js','release.json','manifest.webmanifest']:
-   old=subprocess.check_output(['git','show','51351eb:'+name],cwd=SOURCE)
+   old=subprocess.check_output(['git','show','51351eb:'+name],cwd=os.environ.get('NPH_HISTORY_REPO',SOURCE))
    (pathlib.Path(folder)/name).write_bytes(old)
   server=http.server.ThreadingHTTPServer(('127.0.0.1',0),functools.partial(Quiet,directory=folder))
   threading.Thread(target=server.serve_forever,daemon=True).start();url=f'http://127.0.0.1:{server.server_address[1]}/'
