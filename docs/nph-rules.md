@@ -10,6 +10,14 @@ Use logo family B across installed app artwork and shared page icons. Follow the
 
 ## 0. Core rules (draft 30 Oct 2026, app v2.74, for P to check)
 
+### v2.112 independent rule checks and confirmed corrections (3 Nov 2026)
+
+- Run `python tools/verify-release.py` before every publish. The read-only checker audits detached plan/food observations against independent portion, chronology, expiry and readiness calculations; mixed seeded actions run only in disposable local browser contexts. A failure saves a replay trace, and every confirmed bug gets a permanent small regression in the gate. Manual warnings stay distinct from integrity failures. See `rule-checker.md` for coverage and explicit limits; this is not a replacement for recipe author review or future phone-sync tests.
+- C1/C11/C14: allocate named-batch portions in actual breakfast/lunch/dinner time order, before implicit/reference tie-breaks. An implicit later dinner cannot take the last portion before an explicit earlier lunch.
+- C3/C22/C23: retain finished source records while a meal in the recent three-day checking window still needs them. Promote expected references to actual when their batch materialises. Missing expected sources may release upcoming choices but must not reset past meal overrides. Older completed sources may be archived without rewriting their old saved meal picks.
+- C16/C17/C20: freezer dates apply to assigned meals too. Timestamped thawed food expires at take-out time plus exactly 24 hours, including across UK clock changes. Current expiry, planned meals, available storage choices and Re-plan use the same deadline. Untimed legacy records retain their existing date fallback; never invent historical timestamps. Expired food remains red until discarded and a storage move cannot renew it.
+- C18/C19: automatic take-out at the established 8pm is allowed only if the recorded freezer history shows food was already frozen and still in date then. Do not backdate a thaw before freezing finished or automatically renew expired freezer food. Explicit manual/date corrections retain their existing confirmation flow. These corrections do not create portions or change backup schema 1.
+
 ### v2.111 activation-only meal-header pill highlights (2 Nov 2026)
 
 - C22: switching a day-view warning/ingredient-change pill on highlights only that day's rows with warnings/changes, in the pill's amber/green respectively. Switching it off never triggers a wave. Other dates and rows without that type of information do not highlight.

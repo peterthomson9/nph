@@ -2448,26 +2448,29 @@ const EAT_AT={pn:{B:8,L:12,D:18},lh:{B:8.5,L:11.5,D:16}},eatAt=(who,sl)=>EAT_AT[
 const lotP=lot=>PLANNERS[lot.who];
 function stackExp(lot,s){if(s.w==="freezer")return s.since+(lot.who==="lh"?30:90);if(s.th)return s.since+1;
   const P=lotP(lot);if(lot.who==="lh"||P&&P.R[lot.r]&&P.R[lot.r].ta)return lot.made+1;  /* Lil H household rule and takeaways: by the following day */return lot.made+(P&&(P.cfg.riceDishes||[]).includes(lot.r)?1:2)}
+function stackDeadline(lot,s){if(s.w==='fridge'&&s.th&&s.at)return s.at+DAY;const d=new Date((stackExp(lot,s)+1)*DAY);return new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()).getTime()}
+const stackInDate=(lot,s,day,slot)=>day<=stackExp(lot,s)&&(!(s.w==='fridge'&&s.th&&s.at)||slotMs(lot.who,day,slot||'B')<stackDeadline(lot,s));
+const useByText=(lot,s)=>new Date(stackDeadline(lot,s)).toLocaleString('en-GB',{weekday:'short',hour:'numeric',minute:'2-digit',hour12:true});
 function lotState(fid,o){
   o=o||{};const lot=o.lot||S.food[fid]||Object.values(PLANNERS).map(p=>p.plannedLots&&p.plannedLots()[fid]).find(Boolean);if(!lot||!lot.stacks)return null;const P=lotP(lot);if(!P||!P.R[lot.r])return null;
   const t=todayAbs(),hr=hrNow(),ex=o.exclude||new Set();
   /* a planned meal counts as eaten once its day has passed, or today once its cook-by time has gone (rule C2) */
   const eaten=u=>u.abs<t||(u.abs===t&&hr>=(cookBy(lot.who,u.slot)||22));
-  const uses=P.lotUses(fid,lot).filter(u=>!ex.has(u.id)).sort((a,b)=>a.abs-b.abs||a.ord-b.ord);
+  const uses=P.lotUses(fid,lot).filter(u=>!ex.has(u.id)).sort((a,b)=>a.abs-b.abs||eatAt(lot.who,a.slot)-eatAt(lot.who,b.slot)||a.ord-b.ord);
   const st=lot.stacks.map((s,i)=>({...s,i,exp:stackExp(lot,s),rem:s.p,past:0,fut:0}));
   uses.forEach(u=>{let need=u.p;u.alloc=[];
     /* a meal planned from the freezer uses portions already taken out to thaw first (while they're still in date), then frozen ones */
     const due0=typeof slotMs==="function"&&u.slot?slotMs(lot.who,u.abs,u.slot):0;
     /* fridge meals: portions ready by mealtime first (a stack still thawing comes after) */
-    const pref=s=>{const ok=s.w==="fridge"&&u.abs<=s.exp;return u.w==="freezer"?(s.w==="fridge"&&s.th&&ok?0:s.w==="freezer"?1:ok?2:3):(ok?(due0&&thawReady(s)>due0?0.5:0):s.w==="freezer"?1:2)};
+    const pref=s=>{const ok=s.w==="fridge"&&stackInDate(lot,s,u.abs,u.slot);return u.w==="freezer"?(s.w==="fridge"&&s.th&&ok?0:s.w==="freezer"?1:ok?2:3):(ok?(due0&&thawReady(s)>due0?0.5:0):s.w==="freezer"?1:2)};
     const order=st.filter(s=>s.rem>0).sort((a,b)=>pref(a)-pref(b)||a.exp-b.exp);
     for(const s of order){if(need<=0)break;const q=Math.min(need,s.rem);s.rem-=q;need-=q;if(eaten(u))s.past+=q;else s.fut+=q;u.alloc.push({i:s.i,q,w:s.w})}
     u.short=need;u.from=u.alloc.length?u.alloc[0].w:null;
-    u.late=u.alloc.some(a=>a.w==="fridge"&&u.abs>st[a.i].exp);
+    u.late=u.alloc.some(a=>!stackInDate(lot,st[a.i],u.abs,u.slot));
     /* fridge portions still thawing when the meal is due */
     {const due=typeof slotMs==="function"&&u.slot?slotMs(lot.who,u.abs,u.slot):0,rd=Math.max(0,...u.alloc.filter(a=>a.w==="fridge").map(a=>thawReady(st[a.i])));u.readyAt=rd;u.notThawed=!!rd&&!!due&&rd>due}
     u.thaw=u.alloc.some(a=>a.w==="freezer");u.unfrozen=u.alloc.some(a=>a.w==="freezer"&&!isFrozen(st[a.i])&&freezeFinish(st[a.i])>thawStart(u.abs));u.noTime=u.thaw&&u.abs===t&&u.alloc.some(a=>a.w==="freezer"&&isFrozen(st[a.i]))});
-  st.forEach(s=>{s.now=s.p-s.past;s.free=s.rem;s.expired=s.w==="fridge"&&t>s.exp&&s.now>0});
+  st.forEach(s=>{s.now=s.p-s.past;s.free=s.rem;s.expired=Date.now()>=stackDeadline(lot,s)&&s.now>0});
   const now=st.reduce((a,s)=>a+s.now,0),fut=uses.filter(u=>!eaten(u));
   return {fid,lot,P,st,uses,fut,t,now,free:st.reduce((a,s)=>a+s.free,0),
     bad:st.some(s=>s.expired)||fut.some(u=>u.late||u.short>0||u.noTime||u.notThawed),done:now<=0&&!fut.length}}
@@ -2489,9 +2492,10 @@ const isThawing=s=>{const r=thawReady(s);return !!r&&Date.now()<r};
 function readyTxt(ms){const d=new Date(ms),h=d.getHours(),m=d.getMinutes(),n=new Date(),day=Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate())-new Date(n.getFullYear(),n.getMonth(),n.getDate()))/864e5);
   const c=`${h%12||12}${m>=15&&m<45?":30":""}${h>=12?"pm":"am"}`;return day<=0?c:day===1?"tomorrow "+c:fmtAbs(Math.floor(ms/DAY),{weekday:"short"})+" "+c}
 /* outLog: the day fresh portions left the batch (frozen or thrown away), so a meal card shows the portions as they were on its own day (v2.78) */
-function lotMove(lot,i,q,to,ago){ago=ago||0;const t=todayAbs()-ago,st=lot.stacks.map(s=>({...s})),from=st[i];st[i].p-=q;let out=lot.out||0;const log=[...(lot.outLog||[])];if(isFresh(lot,from)){out+=q;log.push({d:t,q})}
+function lotMove(lot,i,q,to,ago,atMs){ago=ago||0;const t=todayAbs()-ago,st=lot.stacks.map(s=>({...s})),from=st[i];st[i].p-=q;let out=lot.out||0;const log=[...(lot.outLog||[])];if(isFresh(lot,from)){out+=q;log.push({d:t,q})}
   /* out of the freezer before it froze: it's simply still fresh, with its original eat-by date */
   const nw=to==="freezer"?{w:"freezer",since:t,th:false,at:Date.now()-ago*DAY,h:freezeHours(q)}:from.w==="freezer"&&!ago&&!isFrozen(from)?{w:"fridge",since:lot.made,th:false}:{w:"fridge",since:t,th:true,h:thawHours(q,lot.who),...(ago?{slot:"D",at:(()=>{const d=new Date(t*DAY);return new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),lot.who==="lh"?16:18).getTime()})()}:{at:Date.now()})};
+  if(atMs!=null&&nw.th)nw.at=atMs;
   const m=st.find(x=>x.w===nw.w&&x.since===nw.since&&!!x.th===nw.th);if(m){m.p+=q;if(nw.at){m.at=nw.at;if(nw.h)m.h=Math.max(m.h||0,nw.h)}}else st.push({...nw,p:q});
   if(isFresh(lot,nw)){out-=q;log.push({d:t,q:-q})}
   return {...lot,...(lot.src?{out:Math.max(0,out),outLog:log}:{}),stacks:st.filter(x=>x.p>0)}}
@@ -2530,16 +2534,16 @@ function tidyFood(){quietly(()=>tidyFood0())}
 function tidyFood0(){const t=todayAbs();histAppend(()=>Object.values(PLANNERS).forEach(P=>P.cleanRefs()));Object.keys(S.food).forEach(fid=>{const lot=S.food[fid];if(!lot||!lot.stacks)return;const s=lotState(fid);
   if(!s){if(!lotP(lot))return;put("food",fid,null);return}
   if(lot.src&&lot.made>=FOOD_START&&!lotP(lot).cookStill(lot)){histAppend(()=>{lotP(lot).dropRefs(fid);put("food",fid,null)});return}
-  if(s.done&&(!lot.src||lot.made<t-3))put("food",fid,null)})}
+  if(s.done&&(!lot.src||lot.made<t-3)&&!s.uses.some(u=>u.abs>=t-3))put("food",fid,null)})}
 /* the thaw reminder: from 8pm the night before (or on the day), assume the food was taken out and move it to the fridge.
    "It's still frozen" on the meal puts it back exactly as it was. Not an undo step of its own. */
 function autoThaw(){const t=todayAbs(),hr=new Date().getHours();let changed=false;
   Object.keys(S.food).forEach(fid=>{const lot=S.food[fid];if(!lot||!lot.stacks)return;const s=lotState(fid);if(!s)return;
     const take={};let ago=0;
     s.fut.forEach(u=>{if(!u.thaw||(lot.noAuto!=null&&u.abs<=lot.noAuto))return;const day=u.abs===t,eve=u.abs===t+1&&hr>=20;if(!day&&!eve)return;
-      if(day)ago=1;u.alloc.forEach(a=>{const st=lot.stacks[a.i];if(a.w==="freezer"&&st&&isFrozen(st))take[a.i]=(take[a.i]||0)+a.q})});
+      if(day)ago=1;u.alloc.forEach(a=>{const st=lot.stacks[a.i];if(a.w==="freezer"&&st&&isFrozen(st)&&freezeFinish(st)<=thawStart(u.abs)&&stackExp(lot,st)>=u.abs)take[a.i]=(take[a.i]||0)+a.q})});
     const idx=Object.keys(take).map(Number).sort((x,y)=>y-x);if(!idx.length)return;
-    let nl=lot;idx.forEach(i=>{nl=lotMove(nl,i,Math.min(take[i],nl.stacks[i].p),"fridge",ago)});
+    let nl=lot;idx.forEach(i=>{nl=lotMove(nl,i,Math.min(take[i],nl.stacks[i].p),"fridge",ago,thawStart(t+(ago?0:1)))});
     quietly(()=>put("food",fid,{...nl,auto:{stacks:lot.stacks,out:lot.out||0,day:Math.max(...s.fut.filter(u=>u.thaw).map(u=>u.abs))}}));changed=true});
   return changed}
 function stillFrozen(fid){const lot=S.food[fid];if(!lot||!lot.auto)return;const {auto,_by,_at,...rest}=lot;
@@ -2562,7 +2566,7 @@ function setQty(k,q){const cur=stockOf(k);put("stock",k,{...cur,out:cur.out!==fa
 
 /* ================= Meal planner (one engine, two pages) ================= */
 const PLANNERS={};
-const NPH_V=window.NPH_VERSION||"2.111";
+const NPH_V=window.NPH_VERSION||"2.112";
 function Planner(cfg){
   const id=cfg.id, R=cfg.R, T=cfg.T, IC=cfg.IC, BLK=cfg.BLK, ANCHOR=cfg.anchor;
   const P={id,cfg};
@@ -2858,8 +2862,9 @@ function Planner(cfg){
   const refCur=(tag,slot,n)=>{if(tag==="n"||tag==="p"){const sp=splitOf(slot,n)||{};return sp[tag]||dayMain(slot,n)}return slot==="B"?bfAt(n):valAt(slot,n)};
   const isRefDay=(tag,slot,n)=>{const v=S[id]["fz-"+tag+slot+n];if(!v)return false;const lot=S.food[v.f]||(v.from&&v.from.lot);return !lot||lot.r===refCur(tag,slot,n)};
   /* tidy: a link to stored food that no longer matches the day's meal (you picked something else) goes */
-  P.cleanRefs=()=>Object.keys(S[id]).forEach(k=>{if(!k.startsWith("fz-"))return;const v=S[id][k];if(!v)return;const lot=foodLots()[v.f];if(!lot){if(v.planned){put(id,k,null);if(k[3]==="m")setOv("x-"+k[4]+k.slice(5),null)}return}
-    const tag=k[3],slot=k[4],n=+k.slice(5);if(lot.r!==refCur(tag,slot,n))put(id,k,null)});
+  P.cleanRefs=()=>Object.keys(S[id]).forEach(k=>{if(!k.startsWith("fz-"))return;const v=S[id][k];if(!v)return;const tag=k[3],slot=k[4],n=+k.slice(5),lot=foodLots()[v.f];if(!lot){if(v.planned&&n>=todayN()&&!(n===todayN()&&hrNow()>=cookBy(id,slot))){put(id,k,null);if(tag==="m")setOv("x-"+slot+n,null)}return}
+    if(v.planned&&S.food[v.f]){const {planned,...actual}=v;put(id,k,actual)}
+    if(lot.r!==refCur(tag,slot,n))put(id,k,null)});
   /* picking a meal for a day replaces any stored food that day was using */
   const dropDayRefs=(tag,slot,days)=>days.forEach(d=>{const k="fz-"+tag+slot+d,v=S[id][k];if(v&&!v.fix)put(id,k,null)});
   /* card text and badge for a day eaten from the fridge or freezer */
@@ -2875,6 +2880,7 @@ function Planner(cfg){
       if(why&&u.abs>=t0-3&&!S[id]["ck-"+tag+slot+n])return {src:w0,chk:tag+slot+n,em:`Check: ${why}. Did you have this?`};
       return isLeft&&u.kind!=="ref"?{src:"fr"}:{src:w0,em:w0==="fz"?"From the freezer":u.kind==="ref"?"From the fridge":null}}
     if(u.short>0)return {src:"fr",bad:true,em:"Not enough left in storage"};
+    if(u.late)return {src:w0,bad:true,em:"Past its eat-by date"};
     /* Q1 (30 Oct 2026): stored food that doesn't cover everyone eating that meal */
     if(u.kind==="ref"&&!isLeft){const need=tag==="m"?(slot==="B"?perDay:eatsBatch(slot,n)):1;
       if(u.p<need)return {src:(u.w||u.from)==="freezer"?"fz":"fr",warn:true,em:`Only ${plural(u.p,"portion")}: one of you needs something else`}}
@@ -2885,7 +2891,6 @@ function Planner(cfg){
       if(u.abs===m.s.t&&!u.alloc.some(a=>isFrozen(m.s.st[a.i])))return {src:"fz",em:"From the freezer · only just in, so it hasn't frozen yet"};
       return {src:"fz",em:"From the freezer · thaw it in the fridge the night before"}}
     if(m.s.lot.auto&&u.alloc.some(a=>m.s.st[a.i]&&m.s.st[a.i].th))return {src:"fz",em:"From the freezer · taken out last night",still:m.s.fid};
-    if(u.late)return {src:"fr",bad:true,em:"Past its eat-by date"};
     return {src:"fr",em:u.kind==="ref"?"From the fridge":null}}
   P.icOf=icOf;P.missing=missing;P.R=R;P.perDay=perDay;P.scaleIng=(l,f)=>scaleIng(l,f);
 
@@ -3124,11 +3129,11 @@ function Planner(cfg){
     const pslot=c.kind==="bf"?"B":c.slot,half=c.kind==="n"||c.kind==="p",ftag=half?c.kind:"m",pastPick=pastDay(c.n)&&(half?!!splitOf(pslot,c.n):["main","day","bf"].includes(c.kind)&&!splitOf(pslot,c.n)),fx0=pastPick&&S[id]["fz-"+ftag+pslot+c.n],fxCur=fx0&&fx0.fix?fx0:null;
     if(pastPick){const rl=pslot==="B"||(fxCur&&!half)?null:lotIdOf(id,pslot,runOf(pslot,c.n).s,valAt(pslot,c.n));
       Object.keys(foodLots()).forEach(fid=>{const lot=foodLots()[fid];if(!lot||lot.who!==id||!R[lot.r]||lot.made>atAbs||lot.src===pslot+c.n||lot.src===ftag+pslot+c.n||fid===rl)return;const s=lotState(fid);if(!s)return;
-        ["fridge","freezer"].forEach(w=>{const sts=s.st.filter(x=>x.w===w&&x.since<=atAbs&&(w==="freezer"||x.exp>=atAbs));const mine=!!fxCur&&fxCur.f===fid&&fxCur.w===w;
+        ["fridge","freezer"].forEach(w=>{const sts=s.st.filter(x=>x.w===w&&x.since<=atAbs);const mine=!!fxCur&&fxCur.f===fid&&fxCur.w===w;
           const left=sts.reduce((t,x)=>t+x.now,0);if(!left&&!mine)return;stRows[w].push({fid,r:lot.r,free:left,exp:0,made:lot.made,mine,past:1})})})}
     else if(["main","day","n","p"].includes(c.kind)&&c.slot!=="B")Object.keys(foodLots()).forEach(fid=>{const lot=foodLots()[fid];if(!lot||lot.who!==id||!okKind(lot.r)||!expectedBy(lot,pslot,c.n))return;const s=lotState(fid);if(!s)return;
       ["fridge","freezer"].forEach(w=>{const sts=s.st.filter(x=>x.w===w&&x.now>0);if(!sts.length)return;
-        const ok=sts.filter(x=>x.free>0&&(w==="freezer"||(x.exp>=atAbs&&!x.expired))),free=ok.reduce((a,x)=>a+x.free,0),exp=Math.min(...(ok.length?ok:sts).map(x=>x.exp));
+        const ok=sts.filter(x=>x.free>0&&stackInDate(lot,x,atAbs,c.kind==='bf'?'B':c.slot)),free=ok.reduce((a,x)=>a+x.free,0),exp=Math.min(...(ok.length?ok:sts).map(x=>x.exp));
         const rdy=w==="fridge"?Math.max(0,...ok.map(thawReady)):0;
         stRows[w].push({fid,r:lot.r,free,exp,rdy:rdy>Date.now()?rdy:0,late:rdy>0&&c.slot&&typeof slotMs==="function"&&rdy>slotMs(id,atAbs,c.kind==="bf"?"B":c.slot),bad:sts.some(x=>x.expired),mv:(w==="freezer"||sts.some(x=>!x.expired&&x.exp>=atAbs))&&s.fut.some(u=>u.alloc.some(a=>a.w===w))})})});
     const stOpt=(w,o)=>{const k=o.r,named=P.nameOfLot(o.fid,foodLots()[o.fid]),off=o.free<=0,mv=off&&o.mv&&!o.bad;
@@ -3182,7 +3187,7 @@ function Planner(cfg){
   let placeCtx=null,plCtx=null;
   P.startPlace=(fid,i)=>{const s=lotState(fid);if(!s||!s.st[i])return;placeCtx={fid,w:s.st[i].w,i}};
   const placeLast=()=>{const s=placeCtx&&lotState(placeCtx.fid),x=s&&s.st[placeCtx.i];return x?nOfAbs(x.exp):null};
-  const canPlace=(slot,n)=>{if(!placeCtx||slot==="B")return false;const t=todayN(),last=placeLast();if(last==null||n<t||n>last)return false;return !(n===t&&hrNow()>=cookBy(id,slot))};
+  const canPlace=(slot,n)=>{if(!placeCtx||slot==="B")return false;const t=todayN(),last=placeLast(),s=lotState(placeCtx.fid),x=s?.st[placeCtx.i];if(last==null||n<t||n>last||!x||!stackInDate(s.lot,x,absOf(n),slot))return false;return !(n===t&&hrNow()>=cookBy(id,slot))};
   function placeBar(){const s=lotState(placeCtx.fid),last=placeLast();if(!s||last==null||last<todayN()){placeCtx=null;return ""}
     return `<div class="placebar">${ic("plus")}<span>Tap a lunch or dinner to put <b>${esc(R[s.lot.r].n)}</b> there, up to ${esc(fmt(last,{weekday:"long",day:"numeric",month:"short"}))}.${isThawing(s.st[placeCtx.i])?` It's still thawing until about ${esc(readyTxt(thawReady(s.st[placeCtx.i])))}.`:""}</span><button class="todaybtn" data-placeno>Cancel</button></div>`}
   /* what putting it there changes, day by day */
@@ -3194,8 +3199,8 @@ function Planner(cfg){
       out.push(/cook/.test(i.cls)?`${lab}: replaces ${nm}`:`${lab}: replaces the ${nm} leftovers, so that batch has a day fewer`)}
     return out}
   P.placeAt=(slot,n)=>{const pc=placeCtx,s=lotState(pc.fid);if(!s)return;const b=blockAt(slot,n),kind=b.start===n&&!ov("x-"+slot+n)&&!S[id]["fz-m"+slot+n]?"main":"day";
-    const at=absOf(n),ok=s.st.filter(x=>x.w===pc.w&&x.free>0&&(pc.w==="freezer"||x.exp>=at)),free=ok.reduce((a,x)=>a+x.free,0);if(!free){toast("There's none left that isn't planned");return}
-    let days=1;if(pc.w==="fridge"){const room=kind==="main"?b.len:b.start+b.len-n,byExp=Math.max(1,Math.min(...ok.map(x=>x.exp))-at+1);days=Math.max(1,Math.min(room,byExp,Math.floor(free/perDay)||1))}
+    const at=absOf(n),ok=s.st.filter(x=>x.w===pc.w&&x.free>0&&stackInDate(s.lot,x,at,slot)),free=ok.reduce((a,x)=>a+x.free,0);if(!free){toast("There's none left that isn't planned");return}
+    let days=1;if(pc.w==="fridge"){const room=kind==="main"?b.len:b.start+b.len-n,byExp=Math.max(1,Math.min(...ok.map(x=>x.exp))-at+1);days=Math.max(1,Math.min(room,byExp,Math.floor(free/perDay)||1));while(days>1&&!ok.every(x=>stackInDate(s.lot,x,at+days-1,slot)))days--}
     const go=()=>{placeCtx=null;ctx={kind,slot,n};P.applyStored(pc.fid+":"+pc.w);P.render();jumpTo(n)};
     const lines=placeWhat(slot,n,days);if(!lines.length){go();return}
     plCtx={go};const nm=R[s.lot.r].n;
@@ -3225,10 +3230,10 @@ function Planner(cfg){
     if(t.closest(".close")){mvCtx=null;return false}return false};
   /* put a stored meal on this slot. Fridge food covers as many days as portions and its eat-by date allow; freezer food 1 day */
   P.applyStored=key=>{const [fid,w]=key.split(":"),s=lotState(fid);if(!s)return;const c=ctx;if(!expectedBy(s.lot,c.slot,c.n))return;const r=s.lot.r,split=c.kind==="n"||c.kind==="p",at=absOf(c.n);
-    const ok=s.st.filter(x=>x.w===w&&x.free>0&&(w==="freezer"||x.exp>=at)),free=ok.reduce((a,x)=>a+x.free,0);if(!free)return;
+    const ok=s.st.filter(x=>x.w===w&&x.free>0&&stackInDate(s.lot,x,at,c.kind==='bf'?'B':c.slot)),free=ok.reduce((a,x)=>a+x.free,0);if(!free)return;
     const per=split?1:perDay;let days=1;
     if(!split&&w==="fridge"){const b=blockAt(c.slot,c.n),room=c.kind==="main"?b.len:b.start+b.len-c.n,byExp=Math.max(1,Math.min(...ok.map(x=>x.exp))-at+1);
-      days=Math.max(1,Math.min(room,byExp,Math.floor(free/per)||1))}
+      days=Math.max(1,Math.min(room,byExp,Math.floor(free/per)||1));while(days>1&&!ok.every(x=>stackInDate(s.lot,x,at+days-1,c.slot)))days--}
     if(split)P.applyPick(r);
     else{/* only the days it covers change: the planned batch is simply cooked the day after, so nothing is left blank */
       dropFixFor(c);dropDayRefs("m",c.slot,Array.from({length:days},(_,i)=>c.n+i));
@@ -3540,8 +3545,8 @@ function Planner(cfg){
         entries.forEach(([fid,lot])=>{
           const ik=lotIk(lot,fid);if(!R[lot.r]||planned&&!P.cookStill(lot)||!autoAllowed(lot.r,ik))return;
           const s=lotState(fid,{lot});if(!s)return;
-          const ok=s.st.filter(x=>x.w==="fridge"&&x.free>0&&!x.expired&&x.exp>=todayAbs()).map(x=>({exp:x.exp,rem:x.free,rdy:thawReady(x)}));if(!ok.length)return;
-          const usable=(sl,d)=>{const a=absOf(d);if(a<lot.made||!expectedBy(lot,sl,d))return [];return ok.filter(x=>x.rem>0&&x.exp>=a&&(!x.rdy||x.rdy<=slotMs(id,a,sl))).sort((a,b)=>a.exp-b.exp)};
+          const ok=s.st.filter(x=>x.w==="fridge"&&x.free>0&&!x.expired&&x.exp>=todayAbs()).map(x=>({exp:x.exp,rem:x.free,rdy:thawReady(x),deadline:stackDeadline(lot,x)}));if(!ok.length)return;
+          const usable=(sl,d)=>{const a=absOf(d);if(a<lot.made||!expectedBy(lot,sl,d))return [];return ok.filter(x=>x.rem>0&&x.exp>=a&&slotMs(id,a,sl)<x.deadline&&(!x.rdy||x.rdy<=slotMs(id,a,sl))).sort((a,b)=>a.exp-b.exp)};
           const own=lot.src?parseSrc(lot.src).slot:null,order=own==="L"?["L","D"]:own==="D"?["D","L"]:[null],exp=Math.max(...ok.map(x=>x.exp));
           order.forEach(only=>{for(let d=t;d<=nOfAbs(exp);d++)["L","D"].forEach(sl=>{
             if(only&&sl!==only||fridgeDays.has(sl+d)||d===t&&!fresh(sl)||splitOf(sl,d))return;
@@ -3752,7 +3757,7 @@ function Planner(cfg){
     for(let n=tn-3;n<=tn;n++)["B","L","D"].forEach(sl=>{const z=sl==="B"?(isRefDay("m","B",n)?srcOf("m","B",n,false):null):mainInfo(sl,n);
       if(z&&z.chk)out.push([1,"","info",`${fmt(n,{weekday:"short"})} ${SLOTWORD[sl]}: check what you had`,`meal:${sl}:${n}`])});
     Object.keys(foodLots()).forEach(fid=>{const lot=foodLots()[fid];if(!lot||lot.who!==id)return;const s=lotState(fid);if(!s)return;const nm=P.nameOfLot(fid,lot);
-      if(s.st.some(x=>x.now>0&&x.exp<t))out.push([0,"bad","info",`${nm} is past its date`,"cooked:"+fid]);
+      if(s.st.some(x=>x.expired))out.push([0,"bad","info",`${nm} is past its date`,"cooked:"+fid]);
       else if(s.st.some(x=>x.w==="fridge"&&x.exp===t&&x.now>0))out.push([1,"warn","fridge",`Eat ${nm} today`,"cooked:"+fid]);
       s.fut.forEach(u=>{if(u.unfrozen&&u.abs<=t+1)out.push([1,"cool","fridge",`${nm}: move back to the fridge before this meal`,`meal:${u.slot}:${u.n}`]);else if(u.notThawed&&u.abs<=t+1)out.push([0,"warn","snow",`${nm} won't be thawed for ${u.abs===t?"":"tomorrow's "}${SLOTWORD[u.slot]}`,"cooked:"+fid]);else if(u.noTime)out.push([0,"bad","snow",`${nm}: took it out last night?`,`thaw:${fid}:${(u.alloc.find(a=>a.w==="freezer")||{i:0}).i}`]);else if(u.thaw&&u.abs===t+1)out.push([2,"cool","snow",`Thaw ${nm} tonight`,"cooked:"+fid])})});
     ["L","D"].forEach(slot=>{const v=valAt(slot,tn);if(!R[v]||!cooksOn(slot,tn)||isRefDay("m",slot,tn))return;
@@ -4825,11 +4830,11 @@ function cookedPhase(x){
     label:type==="freezing"?"Freezing · about "+Math.ceil(remaining/3600000)+"h left":"Thawing · ready ~"+readyTxt(end)};
 }
 function cookedInfo(s,x){
-  const mine=s.fut.filter(u=>u.alloc.some(a=>a.i===x.i)),expired=x.exp<s.t,bad=expired||mine.some(u=>u.late);
+  const mine=s.fut.filter(u=>u.alloc.some(a=>a.i===x.i)),expired=Date.now()>=stackDeadline(s.lot,x),bad=expired||mine.some(u=>u.late);
   const days=x.exp-s.t,span=Math.max(1,x.exp-(x.w==="fridge"&&!x.th?s.lot.made:x.since));
-  const pct=Math.max(0,Math.min(100,100*days/span));
-  const colour=days<0?"var(--bad)":days===0?"var(--warn)":pct<=50?"var(--mid)":"var(--ok)";
-  const label=expired?"Past its date · discard":bad?"Planned after eat-by date":days===0?"Eat today":plural(days,"day")+" left";
+  const pct=Math.max(0,Math.min(100,x.w==='fridge'&&x.th&&x.at?100*(stackDeadline(s.lot,x)-Date.now())/DAY:100*days/span));
+  const colour=expired?"var(--bad)":days===0?"var(--warn)":pct<=50?"var(--mid)":"var(--ok)";
+  const label=expired?"Past its date · discard":bad?"Planned after eat-by date":x.w==='fridge'&&x.th&&x.at?'Eat by '+useByText(s.lot,x):days===0?"Eat today":plural(days,"day")+" left";
   const warnings=!bad&&x.free>0?[plural(x.free,"portion")+" not assigned"]:[];
   const plans=mine.map(u=>s.P.fmtN(u.n,{weekday:"short"})+" "+(u.tag==="n"?"N's ":u.tag==="p"?"P's ":"")+({B:"breakfast",L:"lunch",D:"dinner"}[u.slot]||""));
   const canFreeze=x.w==="fridge"&&!x.th&&!expired&&!(s.P.cfg.noFreeze||[]).includes(s.lot.r)&&!s.P.R[s.lot.r].ta;
@@ -4845,7 +4850,7 @@ function stackCard(s,x){
   if(timeMode){text=phase?esc(phase.label):'<span class="nw">Not '+mode+'</span>';textColour=phase?phase.colour:"var(--muted)"}
   const badge=v.phase?' <span class="cphase" style="--phase:'+v.phase.colour+'" role="img" aria-label="'+v.phase.type+'">'+ic(v.phase.icon)+'</span>':"";
   const action=(icon,label,col,attr,disabled)=>'<button type="button" class="edbtn" style="--c:'+col+'" '+attr+'="'+key+'"'+(disabled?' disabled':'')+'>'+ic(icon)+'<span>'+label+'</span></button>';
-  const primary=x.w==="freezer"?action("fridge","To fridge","var(--k-fridge)","data-fthaw"):
+  const primary=x.w==="freezer"?action("fridge","To fridge","var(--k-fridge)","data-fthaw",v.expired):
     !v.canFreeze&&!v.bad&&x.free>0?action("plus","Add to meal","var(--warn)","data-fadd"):action("snow","Freeze","var(--k-freezer)","data-ffrz",!v.canFreeze);
   return '<div class="fcard cooked-card days" data-fcard="'+key+'" data-storage="'+x.w+'" data-expired="'+v.expired+'" data-pill-warnings="'+!!v.warnings.length+'" data-pill-planned="'+!!v.plans.length+'" data-pill-freezing="'+(v.phase?.type==='freezing')+'" data-pill-thawing="'+(v.phase?.type==='thawing')+'" style="--profile:'+profile+';--acc:'+profile+';--c:var(--i-'+P.icOf(lot.r)+')" aria-expanded="false">'+
     '<div class="row cooked-row'+(v.warnings.length?' has-warning':'')+(v.bad?' has-bad':'')+'">'+
@@ -5040,6 +5045,7 @@ document.addEventListener("click",e=>{if(!ieCtx||!$("dlg").open||!$("card").clas
   if(e.target.closest("[data-ieno],.close")){ieCtx=null;$("dlg").close()}});
 let mvCtx=null;
 function openMove(fid,i,kind,virt,ago){const s=lotState(fid,virt?{lot:virt}:{});if(!s||!s.st[i])return;const x=s.st[i];
+  if(kind!=='discard'&&x.expired){toast('Past its date · discard these portions');return}
   /* on a past day: what was there at the end of that day (meals after it can't then come from the fridge) */
   const at=s.t-(ago||0),usedBy=s.uses.filter(u=>u.abs<=at).reduce((a,u)=>a+u.alloc.filter(z=>z.i===i).reduce((b,z)=>b+z.q,0),0);
   const max=ago?Math.max(0,x.p-usedBy):x.now;if(max<=0){toast("Nothing left in the fridge from this batch");return}

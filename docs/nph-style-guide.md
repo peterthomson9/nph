@@ -652,3 +652,11 @@ Owner correction, v2.111: day/Cooked header pills use the existing semantic wave
 | Pass | Date | App version | Area | Result |
 |---|---|---|---|---|
 | 57 | 2 Nov 2026 | 2.111 | Activation-only applicable-card pill waves | Disposable Brave, both profiles, light/dark at 320/400px: Fridge/Freezer warning, calendar, freezing/thawing applicability and colours; day warning/change waves; no wave when switched off, no unrelated cards highlighted and household records unchanged. Calendar-wave screenshots inspected. Existing Cooked actions/portion behaviour and reduced-motion CSS retained. Only affected surfaces checked. |
+
+### Exact storage status corrections (v2.112, 3 November 2026)
+
+Keep the existing card/status components and semantic colours. A timestamped thaw uses Eat by [weekday/time] and a bar based on its actual remaining 24-hour window. An expired freezer assignment uses the existing red date warning; its To fridge action is disabled rather than renewing the date. No checker window or new phone controls are added: the checker is a development/release tool.
+
+| Pass | Date | App version | Area | Result |
+|---|---|---|---|---|
+| 58 | 3 Nov 2026 | 2.112 | Existing storage status and date-warning corrections | Local disposable phone checks retain both profiles/themes at 320/400px through the Cooked, source, pill and storage regression gate. Existing typography, warning outlines, source links, actions and portions retained. Only affected surfaces checked; checker output is development JSON/text. |

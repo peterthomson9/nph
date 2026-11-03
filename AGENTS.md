@@ -19,3 +19,5 @@ For new or substantially changed Lil H recipes/ingredients:
 4. Run the catalogue audit and local checks listed in the checklist before delivery. Do not silence an audit by bypassing readiness checks or weakening a rule. Fix the data or leave the new entry unavailable to automatic selection until reviewed.
 
 Tests must use disposable local Brave/Chrome contexts, never the live app or saved phone data. Metadata must not create portions or rewrite a cooked batch's ingredients. Preserve manual choices with warnings, recipe-only historical notices, and the current rule that gas-maker explanations are absent from recipe windows.
+
+Before every publish, run `python tools/verify-release.py`. For rule changes, also run an appropriate seeded campaign with `tests/rules/run.py`; retain a small committed reproduction for each confirmed failure. See `docs/rule-checker.md`. Keep expected/manual warnings distinct from integrity failures and never relax the oracle merely to silence a bug.

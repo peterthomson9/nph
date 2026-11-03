@@ -42,11 +42,11 @@ From v2.104, IndexedDB is authoritative for household saves. Do not restore, cle
 
 ## Planned next
 
-A checker that reads the whole plan and stored food and lists anything breaking a core rule, run after thousands of random actions on a test copy; every bug found becomes a saved test that must pass before each publish.
+Implemented v2.112: read-only rule checker, seeded mixed-action stress tests and permanent reproductions. Run `python tools/verify-release.py` before every publish; see `docs/rule-checker.md` for coverage, long runs, reports and replay. Every confirmed new bug needs a committed regression in that gate. Phone syncing remains a later implementation step.
 
 ## Current version
 
-v2.111 (2 Nov 2026). Phones may retain an older cached version until its update is installed. Verify the hosted version when publishing. See the end of `docs/nph-changelog.md` for what's in each release.
+v2.112 (3 Nov 2026). Phones may retain an older cached version until its update is installed. Verify the hosted version when publishing. See the end of `docs/nph-changelog.md` for what's in each release.
 
 ## Working with P
 

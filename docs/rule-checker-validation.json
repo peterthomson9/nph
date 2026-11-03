@@ -1,0 +1,84 @@
+{
+  "date": "2026-11-03",
+  "appVersion": "2.112",
+  "seedCount": 12,
+  "completedActions": 6000,
+  "perSeed": [
+    {
+      "seed": 3,
+      "actions": 500,
+      "errors": 0
+    },
+    {
+      "seed": 17,
+      "actions": 500,
+      "errors": 0
+    },
+    {
+      "seed": 101,
+      "actions": 500,
+      "errors": 0
+    },
+    {
+      "seed": 102,
+      "actions": 500,
+      "errors": 0
+    },
+    {
+      "seed": 103,
+      "actions": 500,
+      "errors": 0
+    },
+    {
+      "seed": 201,
+      "actions": 500,
+      "errors": 0
+    },
+    {
+      "seed": 202,
+      "actions": 500,
+      "errors": 0
+    },
+    {
+      "seed": 203,
+      "actions": 500,
+      "errors": 0
+    },
+    {
+      "seed": 301,
+      "actions": 500,
+      "errors": 0
+    },
+    {
+      "seed": 302,
+      "actions": 500,
+      "errors": 0
+    },
+    {
+      "seed": 303,
+      "actions": 500,
+      "errors": 0
+    },
+    {
+      "seed": 2026,
+      "actions": 500,
+      "errors": 0
+    }
+  ],
+  "actionCounts": {
+    "navigate": 413,
+    "move": 375,
+    "stock": 1002,
+    "advance": 578,
+    "pick": 1084,
+    "undo": 233,
+    "order": 599,
+    "discard": 428,
+    "replan": 410,
+    "split": 262,
+    "size": 228,
+    "ingredient": 317,
+    "assign": 71
+  },
+  "notes": "Original failing seeds rerun after confirmed fixes; warnings are separate from integrity errors. Permanent regressions are part of verify-release.py."
+}
