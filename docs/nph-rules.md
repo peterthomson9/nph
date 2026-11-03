@@ -10,6 +10,11 @@ Use logo family B across installed app artwork and shared page icons. Follow the
 
 ## 0. Core rules (draft 30 Oct 2026, app v2.74, for P to check)
 
+### v2.113 shifted-batch recipe identity (3 Nov 2026)
+
+- C22/C23/C26: original L/D batch-position keys remain template identities after a batch moves; they are never interpreted as actual dates for a storage assignment. Only dated day/breakfast keys or an explicit named-lot reference can resolve that assignment. A source must belong to the same profile and recipe. Apply the same distinction to names, ingredient changes, nutrition/preparation checks, recipe windows and Re-plan.
+- The v2.112 report was a source-display collision: Thursday's saved chickpea/salmon choices borrowed Wednesday's beef/egg leftover facts. Existing saved choices become visible correctly without resetting plans, rewriting cooked facts, moving portions or changing the repeat/digestion rules. Valid tomorrow reservations and their recorded ingredient swaps remain intact. Retain the synthetic reproduction in the release gate; household backups remain private test inputs.
+
 ### v2.112 independent rule checks and confirmed corrections (3 Nov 2026)
 
 - Run `python tools/verify-release.py` before every publish. The read-only checker audits detached plan/food observations against independent portion, chronology, expiry and readiness calculations; mixed seeded actions run only in disposable local browser contexts. A failure saves a replay trace, and every confirmed bug gets a permanent small regression in the gate. Manual warnings stay distinct from integrity failures. See `rule-checker.md` for coverage and explicit limits; this is not a replacement for recipe author review or future phone-sync tests.

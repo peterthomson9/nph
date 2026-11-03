@@ -8,7 +8,7 @@ Run before every publication:
 python tools/verify-release.py
 ```
 
-This gate runs 20 checks: release identifiers; independent-oracle self-tests and a seeded smoke run; every regression found here; catalogue/recipe history; leftover planning; Cooked actions/portions; repeated fresh meals; source ingredients; stock/freeze overlap; notice links; Back/window behaviour; pill highlights; dropdown edge; backups; durable storage; save/update boundary; updates and offline reopening. It exits nonzero on failure and writes tests/screenshots/release-gate.txt. App-file releases still require a new NPH_V and prepare-release.py before this gate.
+This gate runs 21 checks: release identifiers; independent-oracle self-tests and a seeded smoke run; every regression found here; catalogue/recipe history; leftover planning; Cooked actions/portions; repeated fresh meals; source ingredients; stock/freeze overlap; notice links; Back/window behaviour; pill highlights; dropdown edge; backups; durable storage; save/update boundary; updates and offline reopening. It exits nonzero on failure and writes tests/screenshots/release-gate.txt. App-file releases still require a new NPH_V and prepare-release.py before this gate.
 
 For sustained mixed actions, run:
 
@@ -24,7 +24,7 @@ Every failed run saves its seed, original clock, initial snapshot, exact chosen 
 python tests/rules/run.py --replay tests/rules/failures/seed-3.json
 ```
 
-Replay failures may cease to be applicable after a bug fix; that is reported explicitly rather than silently skipped. Full generated traces are ignored by Git because they can be large. The small permanent reproductions, regression-history.js and regression-boundaries.js, are committed and are mandatory release checks. Add a new small regression for every further confirmed bug; never weaken an invariant to make a run pass.
+Replay failures may cease to be applicable after a bug fix; that is reported explicitly rather than silently skipped. Full generated traces are ignored by Git because they can be large. The small permanent reproductions, regression-history.js, regression-boundaries.js and regression-shifted-source.js, are committed and are mandatory release checks. Add a new small regression for every further confirmed bug; never weaken an invariant to make a run pass.
 
 ## What is checked
 
@@ -53,4 +53,8 @@ Some observations necessarily come from the app: its recipe catalogue, generated
 - Automatic thaw could be dated before freezing finished, or renew expired freezer food. Only assume the established 8pm take-out when the recorded freeze/expiry history permits it; retain an honest frozen warning otherwise.
 - Timestamped thawed food could be treated as usable until the end of the following calendar date. Use the actual 24-hour deadline for current expiry, planned meals, available storage choices and re-plan; keep the documented untimed legacy fallback.
 
+- v2.113: shifted original batch-position keys collided with actual dates holding stored-food reservations. Cards and recipe/nutrition checks could borrow another batch’s facts while the picker showed the correct saved recipe. Keep template and dated keys distinct, validate named-source identity, and preserve both same-recipe cooking differences and valid tomorrow leftovers. The permanent test is synthetic, derived from the reported scenario without publishing household backup data.
+
 These changes preserve source facts, portions, backup format/data schema 1, explicit choices and existing safety-warning locations. No phone's saved data is edited or reset.
+
+Validation for v2.113: the supplied backup reproduced the displayed-name mismatch in a disposable Brave context; the corrected lookup showed the saved chickpea/salmon choices with cooked food unchanged. All 21 release checks passed. A further 500 actions per seed (3, 17, 2026), 1,500 total, passed with zero integrity errors; expected manual warnings remained distinct. Only the minimal synthetic scenario is committed.

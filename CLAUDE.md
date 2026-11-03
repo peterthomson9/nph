@@ -46,7 +46,7 @@ Implemented v2.112: read-only rule checker, seeded mixed-action stress tests and
 
 ## Current version
 
-v2.112 (3 Nov 2026). Phones may retain an older cached version until its update is installed. Verify the hosted version when publishing. See the end of `docs/nph-changelog.md` for what's in each release.
+v2.113 (3 Nov 2026). Phones may retain an older cached version until its update is installed. Verify the hosted version when publishing. See the end of `docs/nph-changelog.md` for what's in each release.
 
 ## Working with P
 

@@ -2566,7 +2566,7 @@ function setQty(k,q){const cur=stockOf(k);put("stock",k,{...cur,out:cur.out!==fa
 
 /* ================= Meal planner (one engine, two pages) ================= */
 const PLANNERS={};
-const NPH_V=window.NPH_VERSION||"2.112";
+const NPH_V=window.NPH_VERSION||"2.113";
 function Planner(cfg){
   const id=cfg.id, R=cfg.R, T=cfg.T, IC=cfg.IC, BLK=cfg.BLK, ANCHOR=cfg.anchor;
   const P={id,cfg};
@@ -2583,15 +2583,17 @@ function Planner(cfg){
   const rawSubs=(r,ik)=>{const g=(S[id]["rs-"+r]||{}).m||{},d=ik?S[id]["is-"+ik]:null;return {...g,...(d&&d.r===r?d.m||{}:{})}};
   const snapshotSubs=(r,ik)=>{const sm=rawSubs(r,ik);R[r].need.forEach(a=>{if(!sm[a]&&goneOut(r,a))sm[a]="-"});Object.keys(sm).filter(a=>a[0]==="+"&&isGone(a.slice(1))).forEach(a=>delete sm[a]);return sm};
   const batchAt=(r,ik)=>{if(!ik)return null;
-    if(ik.startsWith("@lot:"))return S.food[ik.slice(5)]||null;
-    const m=/^(?:x?([LD])|b)(-?\d+)$/.exec(ik),ref=m&&S[id]["fz-m"+(m[1]||"B")+m[2]];
-    if(ref&&S.food[ref.f])return S.food[ref.f];
+    if(ik.startsWith("@lot:")){const lot=S.food[ik.slice(5)];return lot?.who===id&&lot.r===r?lot:null}
+    /* L/D keys identify the original batch position, not a calendar date after a shift.
+       Only dated xL/xD/b keys may resolve a day's explicit storage assignment. */
+    const m=/^(?:x([LD])|b)(-?\d+)$/.exec(ik),ref=m&&S[id]["fz-m"+(m[1]||"B")+m[2]],stored=ref&&S.food[ref.f];
+    if(stored?.who===id&&stored.r===r)return stored;
     return Object.values(S.food).find(l=>l.who===id&&l.r===r&&l.src&&(l.facts?l.facts.ik===ik:(()=>{const q=parseSrc(l.src);return (q.tag!=="m"?q.tag+q.slot+q.n:ikAt(q.slot,q.n))===ik})()))||null};
   const factsAt=(r,ik)=>{const lot=batchAt(r,ik);if(!lot)return null;if(lot.facts)return lot.facts;
     const q=lot.src&&parseSrc(lot.src),own=q&&"x"+q.slot+q.n,key=q?(q.tag!=="m"?q.tag+q.slot+q.n:S[id]["is-"+own]?.r===r?own:ikAt(q.slot,q.n)):null;
     return {legacy:true,ik:key,sm:rawSubs(r,key),products:{},portions:lot.mk,recipe:id==="lh"?(LH_LEGACY[r]||R[r]):R[r]}};
   const subsOf=(r,ik)=>{const facts=factsAt(r,ik);if(facts)return {...facts.sm};
-    const ref=/^(?:x?([LD])|b)(-?\d+)$/.exec(ik||"");if(ref&&S[id]["fz-m"+(ref[1]||"B")+ref[2]])ik=sourceIk(r,ik,(ref[1]||"B")+":"+ref[2]);return rawSubs(r,ik)};
+    const ref=/^(?:x([LD])|b)(-?\d+)$/.exec(ik||"");if(ref&&S[id]["fz-m"+(ref[1]||"B")+ref[2]])ik=sourceIk(r,ik,(ref[1]||"B")+":"+ref[2]);return rawSubs(r,ik)};
   /* Household confirmation, 2 Nov 2026: milk, yoghurt and all other dairy are always full fat. */
   const productsNow=()=>({milk:"whole",yoghurt:"full"});
   /* Lil H's meals can leave an ingredient out (stored as "-") or add one (stored as "+key"), for one meal or everywhere */
@@ -2819,9 +2821,9 @@ function Planner(cfg){
   const foodLots=()=>({...P.plannedLots(),...S.food});
   const expectedBy=(lot,slot,n)=>!lot.planned||absOf(n)>lot.made||(absOf(n)===lot.made&&lot.src&&eatAt(id,slot)>eatAt(id,parseSrc(lot.src).slot));
   function sourceIk(r,ik,at){const m=/^([LDB]):(-?\d+)$/.exec(at||"");if(!m)return ik;const sl=m[1],n=+m[2],ref=S[id]["fz-m"+sl+n],lot=ref&&foodLots()[ref.f];
-    if(lot&&!lot.planned)return "@lot:"+ref.f;
+    if(lot?.who===id&&lot.r===r&&!lot.planned)return "@lot:"+ref.f;
     if(sl!=="B"){const fid=lotIdOf(id,sl,runOf(sl,n).s,r);if(S.food[fid])return "@lot:"+fid}
-    if(lot&&lot.src){const q=parseSrc(lot.src);return q.tag!=="m"?q.tag+q.slot+q.n:q.slot==="B"?"b"+q.n:ikAt(q.slot,q.n)}
+    if(lot?.who===id&&lot.r===r&&lot.src){const q=parseSrc(lot.src);return q.tag!=="m"?q.tag+q.slot+q.n:q.slot==="B"?"b"+q.n:ikAt(q.slot,q.n)}
     return sl!=="B"?ikAt(sl,runOf(sl,n).s):ik}
   const mealName=(r,sm,short=false,recipe=R[r])=>{const name=short?cardName(r,recipe.n):recipe.n,sw=swapsOf(sm);return name.replace(allWords(),m=>{const hit=sw.find(([a])=>wordIs(m.toLowerCase(),a.split("|")));if(!hit)return m;const k=hit[1].split("|")[0],w=({chbreast:"chicken",chthigh:"chicken",chicken:"chicken",beef:"beef",mince:"beef mince",pork:"pork"})[k]||subName(k);return /^\p{Lu}/u.test(m)?cap(w):w})};
   P.nameOfLot=(fid,lot)=>mealName(lot.r,lot.facts?.sm||subsOf(lot.r,lot.planned?null:"@lot:"+fid),true,lot.facts?.recipe||R[lot.r]);
