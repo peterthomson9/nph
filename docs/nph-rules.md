@@ -10,6 +10,14 @@ Use logo family B across installed app artwork and shared page icons. Follow the
 
 ## 0. Core rules (draft 30 Oct 2026, app v2.74, for P to check)
 
+### v2.115 recipe methods after edits (4 Nov 2026)
+
+- C22/C23/R1: a recipe's active method must describe its effective ingredients in cooking order. Do not prepend a full preparation/cooking/serving checklist as an extra cooking step. Keep detailed serving checks in their existing section. Swapped firm fruit is softened before mixing; ripe soft fruit and pouches do not inherit apple steaming instructions.
+- Lil H omissions remove the action from mixed method steps, not just strike through a noun. Cereal still needs a listed, measured cooking/soaking liquid when milk is omitted; omission warnings remain. Prepare additions separately where needed and combine before final finishing; place bay instructions in the cooking stage. Keep the pictured chickpea/courgette/potato mash at four concise steps.
+- Comparable swaps retain useful quantities: use reviewed food weights instead of treating one carrot as one squash, and cheese weights instead of balls of cheddar. Cooking endpoints remain decisive; do not scale times with portions. Adult slow-cooker meat swaps update the method/time, and selecting an alternative appliance must not leave contradictory appliance instructions in the steps.
+- Offer only compatible future swaps in both manual and automatic choices: stewing beef/pork is not a quick chicken replacement; dry lentils and canned pulses are separate, and banana is a binding ingredient in banana bread/cookies. Do not rewrite previously saved choices or batch facts to enforce the new choices.
+- Preserve recorded ingredients, portions, source links, backup format and sync data. Derive corrected display instructions without writing into cooked records. New base recipe corrections belong to future recipes; historical stored recipe text/ingredients remain recorded. Run the catalogue/method/layout tests and seeded rule checks before publishing. See recipe-review-v2.115.md for review scope and limits.
+
 ### v2.114 private household sync (3 Nov 2026)
 
 - C22/C32: P explicitly creates the shared starting copy; N explicitly joins through a private, expiring invitation. Empty or incomplete remote storage must never replace the main phone. Joining preserves a pre-replacement local recovery copy. Only household members may read/write; Google sign-in and P/N labels alone confer no household access.

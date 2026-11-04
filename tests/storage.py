@@ -1,5 +1,5 @@
 """Disposable localhost/Brave storage migration, failure and recovery checks."""
-import asyncio,functools,http.server,json,pathlib,tempfile,threading,os
+import asyncio,functools,http.server,json,pathlib,tempfile,threading,os,time
 from playwright.async_api import async_playwright
 ROOT=pathlib.Path(__file__).resolve().parent
 SOURCE=ROOT.parent
@@ -10,7 +10,9 @@ class Quiet(http.server.SimpleHTTPRequestHandler):
  def log_message(self,*args):pass
 async def setup(ctx,theme='dark',seed=True):
  await ctx.route('**/fonts.googleapis.com/**',lambda r:r.abort())
- await ctx.add_init_script("""if(!localStorage.getItem('nph-me'))localStorage.setItem('nph-me','N');if(!localStorage.getItem('nph-theme'))localStorage.setItem('nph-theme','THEME');{const R=Date,T=new Date('2026-11-02T09:00:00').getTime(),off=T-R.now();window.Date=class extends R{constructor(...a){super(...(a.length?a:[R.now()+off]))}static now(){return R.now()+off}}}""".replace('THEME',theme))
+ # One offset per browser context: reloading must not rewind the test clock.
+ offset=1793610000000-int(time.time()*1000) # 2 Nov 2026, 09:00 UTC
+ await ctx.add_init_script("""if(!localStorage.getItem('nph-me'))localStorage.setItem('nph-me','N');if(!localStorage.getItem('nph-theme'))localStorage.setItem('nph-theme','THEME');{const R=Date,off=OFFSET;window.Date=class extends R{constructor(...a){super(...(a.length?a:[R.now()+off]))}static now(){return R.now()+off}}}""".replace('THEME',theme).replace('OFFSET',str(offset)))
  if seed:
   await ctx.add_init_script("if(!localStorage.getItem('nph-kitchen-v1')){localStorage.setItem('nph-kitchen-v1',"+json.dumps(json.dumps(LEGACY['payload']['data'],ensure_ascii=False))+ ");localStorage.setItem('nph-recovery-v1',"+json.dumps(json.dumps(LEGACY,ensure_ascii=False))+")}")
 async def ready(page,url):
@@ -71,6 +73,7 @@ async def main():
    assert len(await page.evaluate('NPH_STORE.snapshots'))<=12
    await page.reload();await page.wait_for_function("typeof S!=='undefined'");await page.evaluate('NPH_STORE.flush()')
    previous=await page.evaluate('NPH_STORE.read()')
+   previous_snapshot_ids=set(await page.evaluate('NPH_STORE.snapshots.map(s=>s.id)'))
    await page.evaluate('openSettings()');await page.locator('#backup-file').set_input_files(SOURCE/'tests/fixtures/backups/v1-2.100.json')
    await page.locator('[data-backup-confirm]').wait_for()
    await page.locator('[data-backup-cancel]').click();assert await page.evaluate('NPH_STORE.read()')==previous
@@ -79,9 +82,9 @@ async def main():
    await page.wait_for_function("typeof S!=='undefined'")
    assert await page.evaluate('NPH_STORE.initial')==LEGACY['payload']['data']
    copies=await page.evaluate('NPH_STORE.snapshots')
-   restore=next(s for s in copies if s['reason']=='Before restoring data')
+   restore=next(s for s in copies if s['reason']=='Before restoring data' and s['id'] not in previous_snapshot_ids)
    snapshot=await page.evaluate('async id=>await NPH_STORE.getSnapshot(id)',restore['id'])
-   assert snapshot['data']==previous
+   assert snapshot['data']==previous, {col:{key:{'before':previous[col].get(key),'saved':snapshot['data'][col].get(key)} for key in previous[col].keys()|snapshot['data'][col].keys() if previous[col].get(key)!=snapshot['data'][col].get(key)} for col in previous if previous[col]!=snapshot['data'][col]}
    await page.evaluate('openSettings()');await page.locator('[data-storage-recovery]').click()
    await page.locator('[data-snapshot-review="'+restore['id']+'"]').click()
    async with page.expect_navigation():await page.locator('[data-backup-confirm]').click()

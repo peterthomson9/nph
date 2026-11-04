@@ -668,3 +668,7 @@ Reuse the existing Settings sections, semantic status pill, buttons and modal/Ba
 | Pass | Date | App version | Area | Result |
 |---|---|---|---|---|
 | 59 | 3 Nov 2026 | 2.114 | Shared household sign-in, Create/Join, confirmation, invitation and error | Captured matched real-app Before/After in disposable browsers, light/dark at 320/400px. Automated horizontal-overflow and actual Back-dismissal checks pass. Inspected representative sign-in, choices, join/focus and invitation states; sheets use the existing scroll area. All 22 release checks pass, including emulator permissions and two-phone persistence. Production Google OAuth/native phone behaviour remains to be checked after deployment. |
+
+### Pass 60 — concise recipe corrections (v2.115, 4 Nov 2026)
+
+Correct the existing method text in place; no new section, explanatory warning block or change to recipe-window layout. Preserve green replacement highlights, blue additions and crossed-out ingredient-list history; active method instructions read as a coherent sequence. The reported mash stays at four steps. Checked the edited mash, fruit porridge and adult stew in light/dark at 320/400px: no horizontal overflow or clipped method text. Reuse all existing type, spacing, header, Back and serving-check components. See recipe-review-v2.115.md and tests/recipe-layout-2115.py.

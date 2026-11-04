@@ -2551,7 +2551,7 @@ function setQty(k,q){const cur=stockOf(k);put("stock",k,{...cur,out:cur.out!==fa
 
 /* ================= Meal planner (one engine, two pages) ================= */
 const PLANNERS={};
-const NPH_V=window.NPH_VERSION||"2.114";
+const NPH_V=window.NPH_VERSION||"2.115";
 function Planner(cfg){
   const id=cfg.id, R=cfg.R, T=cfg.T, IC=cfg.IC, BLK=cfg.BLK, ANCHOR=cfg.anchor;
   const P={id,cfg};
@@ -2565,6 +2565,14 @@ function Planner(cfg){
   const altName=a=>a.split("|").map(k=>NAME[k]).join(" or ");
   const FAM=cfg.FAM||{}, KW=cfg.KW||{};
   const famOf=k=>Object.keys(FAM).find(f=>FAM[f].includes(k));
+  const swapAllowed=(r,a,k)=>{
+    if(id!=="pn")return true;
+    const from=a.split("|"),x=R[r],meat=["chthigh","chbreast","beef","pork"];
+    if(from.some(t=>meat.includes(t))&&meat.includes(k))return x.m==="Slow cooker"||from.every(t=>["chthigh","chbreast"].includes(t))&&["chthigh","chbreast"].includes(k);
+    if(from.includes("banana")&&["bananabread","pbcookies"].includes(r))return false;
+    if(from.includes("lentils")||k==="lentils")return false;
+    return true;
+  };
   const rawSubs=(r,ik)=>{const g=(S[id]["rs-"+r]||{}).m||{},d=ik?S[id]["is-"+ik]:null;return {...g,...(d&&d.r===r?d.m||{}:{})}};
   const snapshotSubs=(r,ik)=>{const sm=rawSubs(r,ik);R[r].need.forEach(a=>{if(!sm[a]&&goneOut(r,a))sm[a]="-"});Object.keys(sm).filter(a=>a[0]==="+"&&isGone(a.slice(1))).forEach(a=>delete sm[a]);return sm};
   const batchAt=(r,ik)=>{if(!ik)return null;
@@ -2666,15 +2674,15 @@ function Planner(cfg){
   const autoReady=(r,ik)=>id!=="lh"||servingReview(r,subsOf(r,ik),ik).ready;
   const autoAllowed=(r,ik)=>autoReady(r,ik)&&!dietIssues(r,subsOf(r,ik),R[r].t==="bf"?"B":"L",ik).some(x=>x.h);
   /* in-stock swaps for an ingredient, from the same family */
-  const altsFor=a=>{const ks=a.split("|"),f=famOf(ks[0]);return f?FAM[f].filter(k=>!ks.includes(k)&&!isOut(k)):[]};
+  const altsFor=(a,r)=>{const ks=a.split("|"),f=famOf(ks[0]);return f?FAM[f].filter(k=>!ks.includes(k)&&!isOut(k)&&(!r||swapAllowed(r,a,k))):[]};
   /* every missing ingredient has something in stock it can be swapped for */
-  const fixable=(r,auto)=>{const sm=subsOf(r,null),bad=R[r].need.filter(a=>{if(sm[a]==="-")return false;const c=sm[a]||a;return altOut(c)&&!minorA(c,r)});return bad.length>0&&bad.every(a=>(auto?autoAlts(sm[a]||a,r):altsFor(sm[a]||a)).length)};
+  const fixable=(r,auto)=>{const sm=subsOf(r,null),bad=R[r].need.filter(a=>{if(sm[a]==="-")return false;const c=sm[a]||a;return altOut(c)&&!minorA(c,r)});return bad.length>0&&bad.every(a=>(auto?autoAlts(sm[a]||a,r):altsFor(sm[a]||a,r)).length)};
   /* swaps the randomisers may make on their own: never the ingredient a dish is named after, and meat/fish only chicken thigh <-> breast */
   const AUTO_PAIRS=[["chthigh","chbreast"]];
   const autoAlts=(a,r)=>{const ks=a.split("|"),f=famOf(ks[0]);if(!f)return [];
     const name=R[r].n.toLowerCase();if(ks.some(k=>(R[r].key||[]).includes(k)||kwOf(k).some(w=>name.includes(w.replace(/s$/,"")))))return [];
     const strict=f==="meat"||f==="protein",pair=AUTO_PAIRS.find(p=>ks.some(k=>p.includes(k)));
-    return FAM[f].filter(k=>!ks.includes(k)&&!isOut(k)&&(!strict||(pair&&pair.includes(k)))&&servingReview(r,{...subsOf(r,null),[a]:k}).ready&&!(NUT&&dietIssues(r,{...subsOf(r,null),[a]:k},R[r].t==="bf"?"B":"L").some(x=>x.h)))};
+    return FAM[f].filter(k=>!ks.includes(k)&&!isOut(k)&&swapAllowed(r,a,k)&&(!strict||(pair&&pair.includes(k)))&&servingReview(r,{...subsOf(r,null),[a]:k}).ready&&!(NUT&&dietIssues(r,{...subsOf(r,null),[a]:k},R[r].t==="bf"?"B":"L").some(x=>x.h)))};
   /* recipe text is matched on the original names, so it still matches after an item is renamed */
   const kwOf=k=>KW[k]||[BASE[k].replace(/\s*\(.*?\)/g,"").toLowerCase()];
   const renamed=k=>NAME[k]!==BASE[k]&&!isGone(k),newWord=k=>NAME[k].replace(/\s*\(.*?\)/g,"").trim();
@@ -4030,6 +4038,54 @@ function Planner(cfg){
     if(t.closest("[data-tarm]")){put("food",`t-${id}-${c.ik}`,null);toast("Leftovers removed");drawTA();$("ta-note").addEventListener("change",saveTANote);return true}
     if(t.closest("[data-tadone],.close")){saveTANote();taCtx=null;$("dlg").close();return true}
     return false};
+  function methodText(text,sm){return esc(text).replace(/\{\{(\w+)\}\}/g,(_,k)=>{const t=sm[k]||k,label=esc((NAME[t]||t).toLowerCase());return sm[k]&&sm[k]!==k?`<mark class="sw">${label}</mark>`:label})}
+  function swapIngredient(line,x,sm){
+    const a=x.need.find(k=>sm[k]&&sm[k]!=="-"&&mentions(k,line));if(!a)return line;
+    if(id==="pn"){
+      const from=a.split("|")[0],target=sm[a],word=kwOf(from)[0];
+      if(["mozzarella","cheddar"].includes(from)&&["mozzarella","cheddar"].includes(target)){
+        const balls=line.match(/(\d+) balls?/),amount=line.match(/(\d+)g/);
+        if(balls||amount)return `${balls?+balls[1]*125:+amount[1]}g ${word}, ${target==="cheddar"?"grated":"torn into small pieces"}`;
+      }
+      if(["chthigh","chbreast","beef","pork"].includes(from)&&x.m==="Slow cooker"){
+        const amount=line.match(/\d+(?:\.\d+)?\s*(?:kg|g)\b/);if(amount)return `${amount[0]} ${word}, boneless, cut into large chunks`;
+      }
+      if(["passata","tomtins","jarsauce"].includes(from)&&["passata","tomtins","jarsauce"].includes(target)){
+        const amount=line.match(/(\d+)\s*(?:g|ml)/),packs=line.match(/(\d+) (?:jars?|tins?)/);
+        if(amount||packs)return `${amount?amount[1]:+packs[1]*400}g ${word}`;
+      }
+      return line;
+    }
+    const target=sm[a],fruit=["banana","apple","pear","raspberry","blueberry","blackberry","kiwi","pouchfruit"],veg=["carrot","parsnip","butternut","potato","sweetpotato","broccoli","cauliflower"];
+    if(!fruit.includes(a)&&!veg.includes(a))return line;
+    const explicit=line.match(/^(\d+)g/),weight=explicit?+explicit[1]:fruit.includes(a)?({banana:60,apple:60,pear:60,raspberry:30,blueberry:20,blackberry:20,kiwi:60}[a]):a==="carrot"?(/½/.test(line)?40:80):a==="parsnip"?(/½/.test(line)?60:120):["broccoli","cauliflower"].includes(a)?(/3/.test(line)?60:80):/small/.test(line)?100:/½/.test(line)?75:/¼/.test(line)?40:150;
+    // Keep the source word for the existing one-pass swap highlight.
+    const prep=fruit.includes(target)?target==="pouchfruit"?"":", prepared as below":["broccoli","cauliflower"].includes(target)?", small florets":", peeled and diced small";
+    return `${weight}g ${kwOf(a)[0]}${prep}`;
+  }
+  function pnCookSteps(r,x,sm,chosen=rc.meth){
+    if(id!=="pn")return x.s;
+    let rows=x.s.slice();
+    const change=swapsOf(sm).find(([a,t])=>a.split("|").some(k=>["beef","pork","chthigh","chbreast"].includes(k))&&["beef","pork","chthigh","chbreast"].includes(t));
+    if(change&&x.m==="Slow cooker"){
+      const poultry=["chthigh","chbreast"].includes(change[1]);
+      rows=rows.map(t=>/Low (?:for )?\d/i.test(t)?`Cook on low for about ${poultry?"6":"8"} hours, until the meat is tender and cooked through and the vegetables are soft.`:t);
+    }
+    if(chosen==="Hob"&&x.m==="Slow cooker"){
+      const target=change?.[1],poultry=target?["chthigh","chbreast"].includes(target):x.t==="chicken"||r==="cacciatore";
+      rows=rows.map(t=>t.replace(/slow cooker/ig,"heavy lidded pan")).map(t=>/\blow (?:for |for about )?\d/i.test(t)?`Bring to a simmer, cover and cook gently for about ${poultry?"1 hour":"2½ hours"}, until tender and cooked through. Top up with water if needed.`:t);
+    }
+    if(chosen?.includes("Oven")||chosen?.includes("oven")){
+      if(x.m?.includes("Air fryer")||x.m?.includes("air fryer"))rows=rows.map(t=>t.split(/(?<=[.!?])\s+/).map(part=>/air[- ]fry|\d+°C/i.test(part)?part.replace(/air[- ]fryer/ig,"oven").replace(/air[- ]fry/ig,"bake").replace(/(\d+)°C/g,(_,v)=>(+v+20)+"°C").replace(/(\d+)(?:[–-](\d+))? min/g,(_,a,b)=>Math.ceil(+a*1.5)+(b?"–"+Math.ceil(+b*1.5):"")+" min"):part).join(" "));
+      else if(r==="lasagne")rows=rows.map(t=>t.replace(/slow cooker pot/i,"ovenproof dish").replace(/Low 4 hours\.[^.]*\./i,"Bake at 180°C (160°C fan) for 15 min.").replace(/for the last 30 min, lid on/i,"and bake for 30 min more until bubbling"));
+    }
+    if(chosen==="Slow cooker"&&x.m==="Hob"){
+      let converted=false;rows=rows.map(t=>{if(converted||!/simmer.*\d/i.test(t))return t;converted=true;return t.replace(/simmer[^.]*\./i,"transfer to the slow cooker and cook on low for 6–8 hours, until tender and cooked through.")});
+    }
+    if(sm.mozzarella==="cheddar")rows=rows.map(t=>t.replace(/Tear the mozzarella over/i,"Scatter the mozzarella over").replace(/torn mozzarella/i,"grated mozzarella"));
+    if(sm.cheddar==="mozzarella")rows=rows.map(t=>t.replace(/grated cheddar/ig,"torn cheddar"));
+    return rows;
+  }
   const scaleStep=(text,f)=>text.replace(/(?:\d+(?:\.\d+)?[½¼¾⅓⅔]?|[½¼¾⅓⅔])\s*(?:ml|litres?|tbsp|tsp)\b/g,m=>scaleIng(m,f));
   P.openR=(r,ik,ctx,keepScroll,fromPicker,at,ro)=>{
     if(R[r]&&R[r].ta&&!fromPicker){openTA(r,ik,ctx);return}
@@ -4041,17 +4097,31 @@ function Planner(cfg){
     const pvf=!!(pv&&pv.fix),pvE=!!(pv&&!pv.fz);  /* previewing a meal to pick: swaps wait in pv.subs and go on the meal once it's chosen */
     const batch=factsAt(r,ik),x=batch?.recipe||R[r],sm=pvE?{...subsOf(r,null),...pv.subs}:subsOf(r,ik),m=batch?[]:missingSm(r,sm),minOut=needOfSm(r,sm).filter(a=>altOut(a)&&minorA(a,r)),plan=plannedIn(r),store=cfg.storage(x,r),method=x.m||cfg.method;
     const gsm=(S[id]["rs-"+r]||{}).m||{},ism=ik&&S[id]["is-"+ik]&&S[id]["is-"+ik].r===r?S[id]["is-"+ik].m||{}:{};
-    const swapped=swapsOf(sm),adds=addsOf(sm,!!batch),addH=k=>{const h=cfg.addHint?cfg.addHint(k,NAME[k],GRP[k]):["",""];return id==="lh"?[scaleIng(h[0],(x.basis||(x.t==="bf"?1:2))*scale),scaleStep(h[1],(x.basis||(x.t==="bf"?1:2))*scale)]:h};
+    const swapped=swapsOf(sm),adds=addsOf(sm,!!batch),addH=k=>{const h=cfg.addHint?cfg.addHint(k,NAME[k],GRP[k]):["",""];if(id==="lh"&&k==="bayleaf"&&!x.s.some(t=>/simmer/i.test(t)))h[1]="If using, steam the bay leaf alongside the vegetables; remove it before mashing or serving.";return id==="lh"?[scaleIng(h[0],(x.basis||(x.t==="bf"?1:2))*scale),scaleStep(h[1],(x.basis||(x.t==="bf"?1:2))*scale)]:h};
     const omitted=t=>batch?(()=>{const hits=hitsOf(t.toLowerCase(),x.need.flatMap(a=>a.split("|")));return hits.size>0&&[...hits].every(k=>sm[k]==="-")})():goneLine(t,r,sm);
-    const ingRows=x.ing.map(i=>({i,g:omitted(i)})),stRows=x.s.map(t=>({t,g:omitted(t)}));
-    if(id==="lh")for(const [,target] of swapped){if(LH_PREP[target])stRows.unshift({t:"For this ingredient swap: "+LH_PREP[target],prepared:true})}
-    /* added ingredients: their own line, and a step just before the last one */
-    if(adds.length)stRows.splice(stRows.length>1?stRows.length-1:stRows.length,0,...adds.map(k=>({add:k})));
+    const effectiveSm={...sm};
+    if(!batch)for(const a of x.need)if(!sm[a]&&goneOut(r,a))effectiveSm[a]="-";
+    const changed=id==="lh"&&Object.keys(effectiveSm).some(k=>k[0]!=="+");
+    const adapted=changed?lhCookSteps(r,x,effectiveSm):null;
+    const ingRows=x.ing.map(i=>({i:swapIngredient(i,x,effectiveSm),g:omitted(i)}));
+    if(adapted&&x.t==="bf"&&effectiveSm.milk==="-"&&x.need.some(k=>["oats","weetabix"].includes(k))&&!(x.need.includes("yoghurt")&&effectiveSm.yoghurt!=="-"&&x.need.includes("weetabix")))ingRows.push({i:(x.ing.find(t=>/milk/i.test(t))?.match(/\d+ml/)?.[0]||"80ml")+" water for the cereal",g:false});
+    const stRows=(adapted||pnCookSteps(r,x,effectiveSm,batch?.method||rc.meth)).map(t=>({t,g:adapted?false:omitted(t),prepared:!!adapted}));
+    /* Prepare additions separately before final assembly. Bay belongs in the cooking stage. */
+    for(const k of adds){
+      const cooking=k==="bayleaf"?stRows.findIndex(o=>/simmer|steam/i.test(o.t||"")):-1;
+      stRows.splice(cooking>=0?cooking:Math.max(0,stRows.length-1),0,{add:k});
+    }
     const ingJoined=esc(x.ing.join("\n"));
     const extra=swapped.filter(([a])=>!mentions(a,ingJoined)).map(([a,t])=>`<li class="swli"><span class="it"><mark class="sw">${esc(subName(t))}</mark> instead of ${esc(altName(a).toLowerCase())}</span></li>`).join("");
     const st=prevScroll();
     /* cook method */
-    const mo=batch?[{m:batch.method||x.m||cfg.method,time:x.time,note:""}]:methodsOf(r),mcur=mo.find(o=>o.m===rc.meth)||mo[0];
+    const mo=batch?[{m:batch.method||x.m||cfg.method,time:x.time,note:""}]:methodsOf(r);
+    if(id==="pn"&&x.m==="Slow cooker"){
+      const meat=swapped.find(([a,t])=>a.split("|").some(k=>["beef","pork","chthigh","chbreast"].includes(k))&&["beef","pork","chthigh","chbreast"].includes(t));
+      if(meat){const chicken=["chthigh","chbreast"].includes(meat[1]);mo[0].time=chicken?"About 6 hours":"About 8 hours";const hob=mo.find(o=>o.m==="Hob");if(hob){hob.time=chicken?"About 1 hour":"About 2½ hours";hob.note="Use a heavy lidded pan; follow the adapted simmering step below."}}
+    }
+    const mcur=mo.find(o=>o.m===rc.meth)||mo[0];
+    if(id==="pn"&&mcur!==mo[0])mcur.note="Follow the adapted method below; check tenderness and that the food is cooked through.";
     /* how many days it covers (choosable when adding a lunch/dinner) */
     /* opened from a lunch or dinner card on the day it's cooked: its portions can change here too */
     const cm=!pv&&rc.at&&cfg.typeOrder.includes(x.t)?(()=>{const [sl,nn]=rc.at.split(":"),n=+nn;if(!cooksOn(sl,n)||valAt(sl,n)!==r||isRefDay("m",sl,n))return null;return {slot:sl,n,kind:blockAt(sl,n).start===n&&!ov("x-"+sl+n)?"main":"day"}})():null;
@@ -4126,7 +4196,7 @@ function Planner(cfg){
         ${id==="lh"&&(rc.ro||pv?.fz)?`<p class="note">This batch is already cooked. Reheat once until steaming hot throughout, then cool to a suitable serving temperature. Check the texture and preparation below; the original method is shown for reference.</p>`:""}
         ${mcur!==mo[0]?`<div class="mconv">${ic(methIc(mcur.m))}<p><b>${esc(mcur.m)} version.</b> ${timeChips(esc(mcur.note))}</p></div>`:""}
         <ol class="steps">${(()=>{let no=0;return stRows.map(o=>o.add?`<li class="addst"><span class="sn">${++no}</span><p>${timeChips(esc(addH(o.add)[1]))}<small class="lo addt">Added</small></p></li>`
-          :o.prepared?`<li><span class="sn">${++no}</span><p>${esc(o.t)}</p></li>`:o.g?`<li class="gone"><span class="sn">${ic("x")}</span><p>${subText(esc(o.t),sm,r)}<small class="lo">Left out</small></p></li>`
+          :o.prepared?`<li><span class="sn">${++no}</span><p>${timeChips(methodText(scaleStep(o.t,scale),effectiveSm))}</p></li>`:o.g?`<li class="gone"><span class="sn">${ic("x")}</span><p>${subText(esc(o.t),sm,r)}<small class="lo">Left out</small></p></li>`
           :`<li><span class="sn">${++no}</span><p>${timeChips(subText(esc(scaleStep(o.t,scale)),sm,r))}</p></li>`).join("")})()}</ol></section>
       ${id==="lh"?`<section class="serving-checks"><div class="serving-head"><h4>Before serving</h4><p class="serving-intro">Keep food moist, check the temperature and adapt the texture to his current skills. Sit him upright and stay with him while he eats.</p></div><ul class="prep-list">${review.checks.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>${x.variant?`<details class="serve-variant"><summary>Another way to serve</summary><p>${esc(x.variant)}</p></details>`:""}</section>`:""}
       ${tips.length||rc.pen||notesOf(id,r,"tips").length?`<section class="tips">${tips.length?"":`<h4>Good to know</h4>`}${tips.map(([txt,h,icn,cls])=>`<div class="tipc ${cls}"><b>${ic(icn)}${h}</b><p>${subText(esc(txt),{},r)}</p></div>`).join("")}${notesBlock(r,"tips")}</section>`:""}
@@ -4139,7 +4209,7 @@ function Planner(cfg){
   const prevScroll=()=>$("dlg").scrollTop;
   function subPanel(r,ik,ctx,sm){
     const pvE=!!(pvMode&&!pvMode.fz&&pvMode.k===r);
-    const a=rc.open,base=a.split("|")[0],cur=sm[a]||a,fam=famOf(base),opts=fam?FAM[fam].filter(k=>k!==base&&k!==cur).concat((ik||pvE)&&cfg.tempSubs&&cfg.tempSubs[fam]||[]).filter(k=>k!==cur):[];
+    const a=rc.open,base=a.split("|")[0],cur=sm[a]||a,fam=famOf(base),opts=fam?FAM[fam].filter(k=>k!==base&&k!==cur&&swapAllowed(r,a,k)).concat((ik||pvE)&&cfg.tempSubs&&cfg.tempSubs[fam]||[]).filter(k=>k!==cur):[];
     if(FLEX){const fp=flexPanel(r,ik,ctx,sm,a,cur,opts,pvE);if(fp)return fp}
     if(pvE)return `<div class="subpick"><p>Swap <b>${esc(altName(cur))}</b> for:</p><div class="subopts">${opts.map(k=>`<button class="subo${isOut(k)?" out":""}" data-subto="${k}" ${pvMode.fix&&isOut(k)?"disabled":""}>${esc(NAME[k])}<small>${isOut(k)?"run out":"in stock"}</small></button>`).join("")}${cur!==a?`<button class="subo orig" data-subto="">Back to ${esc(altName(a))}</button>`:""}</div></div>`;
     if(rc.pend!=null)return `<div class="subpick warn"><p>${ic("info")}<span>This will change <b>${esc(R[r].n)}</b> on every day it's planned, in every week, for everyone using NPH: ${esc(altName(a))} → <b>${esc(rc.pend?NAME[rc.pend]:altName(a))}</b>.</span></p><div class="acts"><button class="rand sm" data-subok>Change everywhere</button><button class="todaybtn" data-subno>Cancel</button></div></div>`;
@@ -4176,7 +4246,7 @@ function Planner(cfg){
     const b=(w,lab,col,mine)=>`<button class="fav" data-fav="${w}" style="--fc:var(--${col})" aria-pressed="${!!f[w]}" ${mine?"":"disabled"} aria-label="${lab} favourite" title="${mine?(f[w]?"Remove from favourites":"Add to favourites"):`${lab}'s heart is set from their phone`}">${ic("heart")}${w==="h"?"":lab}</button>`;
     return `<span class="favs">${cfg.split?b("p","P","p",me==="p")+b("n","N","n",me==="n"):b("h","Lil H","lilh",true)}</span>`}
   P.favW=favW;
-  P._dbg={catalogAudit,ingredientDataIssues,recipeDataIssues,gasReview,dayGasWhy,review:(r,sm={},ik)=>servingReview(r,sm,ik),subsOf,autoReady,scaleIng,scaleStep,diet:(r,sl,sm={},ik)=>dietIssues(r,sm,sl,ik),dayIron:n=>dayHasIron(n),sN:()=>splitN,kwOf:k=>kwOf(k),ORDER,NAME,valAt,runOf:(s,n)=>runOf(s,n),splitOf,bfAt:n=>bfAt(n),refCur,isRefDay,mainInfo:(s,n)=>mainInfo(s,n),todayN:()=>todayN(),absOf,nOfAbs,R,eatsBatch:(s,n)=>eatsBatch(s,n),madeOf:(s,n,r)=>P.madeOf(s,n,r)};
+  P._dbg={swapAllowed,lhCookSteps,catalogAudit,ingredientDataIssues,recipeDataIssues,gasReview,dayGasWhy,review:(r,sm={},ik)=>servingReview(r,sm,ik),subsOf,autoReady,scaleIng,scaleStep,diet:(r,sl,sm={},ik)=>dietIssues(r,sm,sl,ik),dayIron:n=>dayHasIron(n),sN:()=>splitN,kwOf:k=>kwOf(k),ORDER,NAME,valAt,runOf:(s,n)=>runOf(s,n),splitOf,bfAt:n=>bfAt(n),refCur,isRefDay,mainInfo:(s,n)=>mainInfo(s,n),todayN:()=>todayN(),absOf,nOfAbs,R,eatsBatch:(s,n)=>eatsBatch(s,n),madeOf:(s,n,r)=>P.madeOf(s,n,r)};
   P.factClick=t=>{const {r,ik,ctx}=rc;if(!r)return false;
     const fv=t.closest("[data-fav]");if(fv){if(fv.disabled)return true;const w=fv.dataset.fav,key=id+"-"+r,cur={...favOf(r)};delete cur._by;delete cur._at;
       if(cur[w])delete cur[w];else cur[w]=true;put("favs",key,Object.keys(cur).length?cur:null);toast(cur[w]?`${R[r].n}: a favourite`:`${R[r].n}: no longer a favourite`);P.openR(r,ik,ctx,true);return true}
@@ -4425,6 +4495,136 @@ for(const recipes of [PN_R,LH_R])for(const r of Object.values(recipes)){
  if(r.s.some(t=>/\bsteam(?:ed)?\b/i.test(t)))notes.push("For steaming, fill the steamer to its marked level; on the hob, use 2–3cm water under a basket without touching the food. Keep it simmering and top up if needed.");
  if(r.s.some(t=>/\bboil|cook the pasta|cook spaghetti/i.test(t)))notes.push("For ingredients boiled then drained, use enough water to cover them by about 2cm (a large pan for pasta), and follow the pack where stated.");
  if(notes.length)r.tip=[r.tip,...notes].filter(Boolean).join(" ");
+}
+
+/* v2.115 catalogue review: correct missing/ambiguous actions in authored recipes.
+   These modify future recipe definitions only; stored recipe facts stay intact. */
+PN_R.creampasta.s.unshift("Cook the pasta following the pack until tender, then drain.");
+PN_R.meatballs.s[4]="Cook the pasta following the pack until tender, drain and serve with the meatballs and sauce.";
+PN_R.ragu.s[3]="Cook the pasta following the pack until tender, drain and spoon the ragu over.";
+PN_R.porkolt.s[2]="Put the onion mixture, pork, pepper, tomato and 200ml water into the slow cooker; keep the pasta or potatoes separate.";
+PN_R.porkolt.s[4]="Cook the pasta or boil the potatoes separately until tender, then serve with the stew.";
+PN_R.cacciatore.s[0]="Put the chicken, pepper, onion, tomatoes, purée, herbs, garlic and bay leaf into the slow cooker; keep the side separate.";
+PN_R.cacciatore.s[2]="Check the chicken is cooked through, remove the bay leaf and shred the meat with a fork.";
+PN_R.husleves.s[2]="Lift out the chicken, remove skin and bones and shred it. Remove the bay leaf.";
+PN_R.lencse.s[4]="Remove the bay leaf. Serve with soured cream and a freshly fried egg or fully cooked sausage on top.";
+PN_R.minceamash.s[3]="Boil the potatoes 15–18 min until tender, drain and mash with the butter and milk.";
+PN_R.bbqbowls.s[3]="Add sliced avocado and tomato when you eat it.";
+PN_R.lecso.s[3]="Return the sausage and simmer until cooked through. Serve with bread or separately cooked rice.";
+PN_R.papkrumpli.s[5]="Return the sausage and simmer until cooked through.";
+PN_R.rakott.s[0]="Boil the potatoes until tender, about 20 min. Hard-boil the eggs for 10 min. Cook any raw sausages through separately; ready-cooked smoked sausage needs no pre-cooking. Slice everything.";
+PN_R.bbqchicken.s[2]="Serve today's chicken freshly cooked; cool and refrigerate the spare portions within 2 hours.";
+PN_R.bbqchicken.s[3]="Cook wedges each night following the pack. On leftover nights, add the cooked chicken near the end and reheat until steaming hot throughout.";
+PN_R.katsu.s[4]="Cook the rice following the pack. Slice the cooked chicken and serve over the rice with the sauce.";
+PN_R.katsu.s[5]="For day 2, store sauce and chicken separately. Reheat each once until steaming hot throughout; cook fresh rice.";
+PN_R.pogacsa.s[3]=PN_R.pogacsa.s[3].replace("top with cheese","top with the remaining cheese");
+PN_R.bananabread.s[2]="Mix in the sugar, egg and vanilla, then the bicarb, cinnamon (if using) and salt.";
+for(const r of Object.values(PN_R)){
+  if(r.ta)continue;
+  // Clock times are estimates, including after a permitted thigh/breast swap.
+  if(r.need.some(k=>k.split("|").some(t=>["chthigh","chbreast"].includes(t)))){
+    let last=-1;r.s.forEach((t,i)=>{if(/air fry|fry the chicken|simmer|low \d|low for|chicken back in/i.test(t)&&!/reheat|each night|day 2/i.test(t))last=i});
+    if(last>=0&&!/cooked through|no pink|juices run clear/.test(r.s[last]))r.s[last]+=" Check the chicken is cooked through before serving.";
+  }
+}
+// The base recipes use the same softness endpoint as swapped vegetables.
+for(const r of Object.values(LH_R)){
+  r.ing=r.ing.map(t=>/sweet potato|butternut squash/.test(t)&&/diced/.test(t)&&!/peeled/.test(t)?t.replace(/diced/,/butternut/.test(t)?"peeled, deseeded and diced":"peeled and diced"):t);
+  r.s=r.s.map((t,i)=>/^Steam /.test(t)&&!/^Add.*(?:more|last)/.test(r.s[i+1]||"")&&!/soft|fork|more|last|then.*(?:mash|chop)|Mash|no pink/.test(t)?t.replace(/\.$/,", until the vegetables squash easily."):t);
+}
+
+/* v2.115: authored cooking sequences. Tokens name the source ingredient so swaps
+   are highlighted once, without replacing a replacement or replaying prep steps. */
+function lhCookSteps(r,x,sm){
+  const has=k=>x.need.includes(k)&&sm[k]!=="-",to=k=>sm[k]||k;
+  const n=k=>has(k)?"{{"+k+"}}":"",unique=ks=>ks.filter(has).filter((k,i,a)=>a.findIndex(v=>to(v)===to(k))===i),join=ks=>unique(ks).map(n).join(", ").replace(/, ([^,]+)$/," and $1");
+  let bayAdded=false;
+  const hasBay=x.ing.some(t=>/bay leaf/i.test(t));
+  const steps=[],push=t=>{if(t){if(hasBay&&!bayAdded&&/simmer/i.test(t)){t="If using, add the bay leaf. "+t;bayAdded=true}steps.push(t)}},milk=has("milk")?" with the measured {{milk}}":"";
+  const qty=(k,fallback)=>{const line=x.ing.find(t=>new RegExp(k,"i").test(t));return (k==="water"?line?.match(/(\d+ml) (?:cooking )?water/)?.[1]:line?.match(/\d+ml/)?.[0])||fallback};
+  const prep=ks=>{const targets=ks.filter(has).map(to),bits=[];
+    if(targets.some(k=>["potato","sweetpotato","carrot","parsnip"].includes(k)))bits.push("Peel and dice the roots small");
+    if(targets.includes("butternut"))bits.push("peel, deseed and dice the squash");
+    if(targets.some(k=>["broccoli","cauliflower"].includes(k)))bits.push("cut the florets small");
+    return bits.length?bits.join("; ")+". ":""};
+  const steam=(ks,time)=>{if(ks.some(has))push(prep(ks)+`Steam the ${join(ks)} for about ${time} min, until the vegetables squash easily${ks.includes("chicken")&&has("chicken")?" and the chicken is cooked through":""}${ks.includes("salmon")&&has("salmon")?" and the fish flakes easily":""}.`)};
+  const boilOrzo=()=>{if(has("orzo"))push("Boil the {{orzo}} following the pack until tender, then drain.")};
+  const egg=()=>{if(has("eggs"))push("Hard-boil the {{eggs}} for 10 min, then peel and chop finely.")};
+  const fish=()=>{}; // Preparation is combined with assembly below, not a second cook step.
+  const chicken=()=>{};
+  const mince=()=>{if(has("beef"))push(`Brown the {{beef}} ${has("oil")?"in ½ tsp olive oil":"in a non-stick pan with a little water"} for 5–6 min, breaking it up finely, until cooked through.`)};
+  const finish=()=>{push((has("oil")?"Stir in 1 tsp olive oil for finishing. ":"")+"Mix evenly, loosen with a little water if needed, then divide into portions.")};
+  const herbs=()=>{if(x.ing.some(t=>/^Optional:/i.test(t))&&steps.length)steps[steps.length-1]+=" If using, add the optional finely prepared seasoning."};
+  const mash=()=>push((bayAdded?"Remove the bay leaf. ":"")+(has("salmon")?"Remove the fish skin and check every flake for bones. ":"")+(has("chicken")?"Chop the chicken finely across the fibres, removing skin and gristle. ":"")+`Mash or finely chop the cooked ingredients${milk} and combine${has("chickpeas")?", thoroughly mashing every chickpea":""}${has("peas")?", crushing every pea":""}.`);
+  const fruit=k=>{if(!has(k))return;const t=to(k),word=n(k);
+    if(t==="pouchfruit")push(`Stir in the ${word}; no cooking is needed.`);
+    else if(t==="apple"||t==="pear")push(`Peel, core and dice the ${word}. Steam for about ${t==="apple"?"8–10":"5–8"} min until easily squashed, then mash.`);
+    else if(t==="kiwi")push(`Peel the ripe ${word}, remove any hard core and mash thoroughly.`);
+    else if(t==="banana")push(`Peel and mash the ripe ${word}.`);
+    else push(`Mash every ${word} thoroughly, removing any hard stalks or cores.`)};
+  if(x.t==="bf"&&!["b3","b8"].includes(r)){
+    const fruits=x.need.filter(k=>["banana","apple","pear","raspberry","blueberry","blackberry","kiwi"].includes(k));
+    unique(fruits).forEach(fruit);
+    const liquid=has("milk")?"the measured {{milk}}":qty("milk","80ml")+" water";
+    if(has("oats"))push(`Simmer the {{oats}} in ${liquid} for about 4 min, stirring, until soft.`);
+    if(has("weetabix"))push(has("milk")||!has("yoghurt")?`Soak the crumbled {{weetabix}} in ${liquid} until fully soft.`:"Mix the crumbled {{weetabix}} into the measured {{yoghurt}} and leave until fully soft.");
+    if(has("pb"))push("Thin the smooth {{pb}} with a little warm water, then mix it in fully.");
+    if(has("yoghurt")&&!(has("weetabix")&&!has("milk")))push("Take off the heat, if needed, and stir in the {{yoghurt}}.");
+    herbs();push("Mix together, loosen with a little water if needed, and cool to serving temperature.");return steps;
+  }
+  if(r==="b3"||r==="b8"){
+    steam(r==="b3"?["sweetpotato"]:["butternut","potato"],"10–15");
+    if(has("spinach"))push("Wilt the {{spinach}} in a non-stick pan and chop finely.");
+    if(has("eggs"))push(`Scramble the {{eggs}}${milk} over a low heat until fully set but soft.`);
+    mash();herbs();push("Cool to serving temperature.");return steps;
+  }
+  const steamMeals={s1:["potato","salmon","peas"],s2:["chicken","butternut"],s5:["salmon","broccoli"],s6:["chicken","potato","leek"],s8:["sweetpotato","salmon","spinach"],s10:["parsnip","carrot","potato","chickpeas"],s12:["chicken","sweetpotato","broccoli"],s13:["potato","courgette","chickpeas"],s14:["salmon","leek","peas"],s15:["potato","carrot"],s18:["potato","cauliflower","courgette"],s19:["sweetpotato","broccoli"],s22:["potato","salmon","courgette"]};
+  if(steamMeals[r]){
+    const ks=steamMeals[r],early=ks.filter(k=>["potato","sweetpotato","carrot","parsnip","butternut","chicken"].includes(k)),late=ks.filter(k=>!early.includes(k));
+    if(early.some(has)&&late.some(has)){
+      push(prep(early)+`Steam the ${join(early)} for 8 min.`);
+      push(prep(late)+`Add the ${join(late)} and steam for about 6–10 min more, until the vegetables squash easily${has("chicken")?" and the chicken is cooked through":""}${has("salmon")?" and the fish flakes easily":""}.`);
+    }else steam(ks,early.some(has)?"15–18":"8–10");
+    boilOrzo();egg();fish();chicken();mash();herbs();finish();return steps;
+  }
+  if(r[0]==="m"){
+    const steamed={m2:["potato"],m4:["butternut"],m5:["parsnip","potato"],m6:["cauliflower","peas","potato"],m7:["sweetpotato"]}[r]||[];
+    steam(steamed,"12–15");mince();
+    const veg={m1:["lentils","carrot"],m2:["carrot","peas"],m3:["sweetpotato","carrot"],m4:["spinach"],m5:["leek"],m6:[],m7:["courgette"]}[r];
+    const liquid=has("passata")?`the {{passata}} and ${qty("water","100ml")} water`:r==="m7"?"2 tbsp water":qty("water","100ml")+" water";
+    push(prep(veg)+`Add ${veg.some(has)?"the "+join(veg)+" and ":""}${liquid}. Simmer for about ${r==="m7"?"5–8":r==="m4"?"10":"15–20"} min until ${has("lentils")?"the lentils break down and ":""}everything is soft${has("beef")?" and the mince is cooked through":""}; add a little water if needed.`);
+    boilOrzo();mash();herbs();finish();return steps;
+  }
+  if(["s3","s9","s11","s16","s17"].includes(r)){
+    const veg={s3:["carrot","sweetpotato"],s9:["chicken","carrot"],s11:["butternut"],s16:[],s17:[]}[r];
+    if(has("lentils"))push("Rinse the {{lentils}} in a sieve and discard the rinse water.");
+    const food=["lentils",...veg,"passata"].filter(has);
+    if(food.length)push(prep(veg)+`Put the ${join(food)} in a pan${["s11","s16"].includes(r)?" and cover with water by 2cm":" with "+qty("water",r==="s3"?"250ml":"100ml")+" water"}. Simmer for about 15–20 min until ${has("lentils")?"the lentils break down and ":""}everything is soft${has("chicken")?" and the chicken is cooked through":""}. Top up only as needed; reduce excess liquid.`);
+    if(r==="s16")steam(["potato","peas"],"10–15");
+    if(has("spinach"))push("Wilt the {{spinach}} in the hot sauce and chop finely.");
+    boilOrzo();chicken();mash();herbs();finish();return steps;
+  }
+  if(r==="s4"){
+    steam(["potato"],"12–15");
+    if(has("chickpeas")||has("passata"))push(`Simmer the ${join(["passata","chickpeas"])} for 8 min, adding a little water if needed.`);
+    if(has("spinach"))push("Stir in the {{spinach}}, cook until wilted and chop finely.");
+    mash();herbs();finish();return steps;
+  }
+  if(r==="s7"){
+    boilOrzo();if(has("passata")||has("spinach"))push(`Simmer the ${join(["passata","spinach"])} for 3 min${has("passata")?"":", with a little water"}.`);
+    if(has("eggs"))push("Stir in the beaten {{eggs}} over a low heat until fully set but soft.");
+    push("Combine everything, breaking up any egg clumps.");herbs();finish();return steps;
+  }
+  if(r==="s20"){
+    boilOrzo();steam(["peas","courgette"],"5–8");
+    if(has("eggs"))push("Beat the {{eggs}} with 2 tbsp water. Scramble in a non-stick pan over a low heat until fully set but soft.");
+    mash();herbs();finish();return steps;
+  }
+  if(r==="s21"){
+    push(`Simmer the ${join(["chicken","passata","courgette"])} with 50ml water for about 12–15 min, until soft${has("chicken")?" and the chicken is cooked through":""}.`);
+    boilOrzo();chicken();mash();herbs();finish();return steps;
+  }
+  return null;
 }
 
 /* v2.89: reviewed serving actions, never a claim that a meal is choking-safe. */
@@ -4710,28 +4910,28 @@ const LH=Planner({
       return ""};
     return {canAdd,canLeave}})(),
   addHint:(k,nm,g)=>{const x=(nm||k).toLowerCase(),sp={
-    bayleaf:["1 bay leaf (optional)","If using the bay leaf, simmer it in the sauce, then remove it before mashing or serving."],
+    bayleaf:["1 bay leaf (optional)","If using, add the bay leaf while the sauce simmers; remove it before mashing or serving."],
     eggs:["1 egg, beaten","Cook the beaten egg in a non-stick pan on a low heat, stirring, until fully set but soft. Break into small pieces and mix into the moist food."],
     pb:["½ tsp smooth peanut butter","Loosen the peanut butter with a little warm water and stir it through."],
     chickpeas:["1 tbsp chickpeas (no salt), rinsed","Mash the chickpeas well with a fork, or blend them, and stir them in."],
     lentils:["15g red lentils, rinsed, with 90ml cooking water","Simmer the lentils in 90ml water for about 15–20 min until fully soft and broken down; top up only if needed, then stir them in."],
     beef:["30g beef mince","Brown the mince until no pink is left, breaking it up very fine, then stir it in."],
-    chicken:["30g chicken thigh","Cook the chicken until there's no pink left, then shred or chop it very small and stir it in."],
-    salmon:["30g salmon fillet","Cook the salmon until it flakes easily, check carefully for bones, then flake it in."],
+    chicken:["30g chicken thigh","Dice the chicken small and steam separately for about 15 min until cooked through; chop finely across the fibres and mix in."],
+    salmon:["30g salmon fillet","Steam the salmon separately for about 10 min until cooked through and flaking; remove skin and bones, then mix in."],
     apple:["¼ apple, peeled","Peel and chop the apple, steam it for 8–10 min until very soft, then mash and stir it in."],
     pear:["¼ pear, peeled","Peel and chop the pear, steam it for 5–8 min until soft, then mash and stir it in."],
     blueberry:["15g blueberries","Mash every blueberry thoroughly so none remain whole or round, then stir them through."],
     spinach:["10g spinach","Wilt the spinach for 1–2 min, chop it very fine and stir it in."],
     peas:["1 tbsp frozen peas","Boil the peas for 3–4 min until soft, crush them and stir them in."],
-    passata:["2 tbsp passata","Stir in the passata and simmer for 2–3 min."],
+    passata:["2 tbsp passata","Simmer the passata separately for 2–3 min, then stir it in."],
     orzo:["20g orzo","Boil the orzo for 8–9 min, drain and stir it through."],
-    oats:["1 tbsp oats","Stir in the oats and cook for 3–4 min until soft."],
-    weetabix:["½ Weetabix","Crumble in the Weetabix and let it soften."],
+    oats:["1 tbsp oats, with 30ml water","Simmer the oats separately in 30ml water for 3–4 min until soft; loosen if needed, then stir in."],
+    weetabix:["½ Weetabix, with 40ml warm water","Soak the crumbled Weetabix in 40ml warm water until fully soft, then mix in."],
     yoghurt:["15g full-fat plain Greek yoghurt","Stir in the yoghurt once it's off the heat."],
     milk:["15ml whole milk","Stir in 15ml whole milk to loosen it."],
     oil:["½ tsp olive oil","Stir in ½ tsp olive oil and mix evenly."]};
     if(sp[k])return sp[k];
-    if(g==="Veg")return [`A small handful of ${x}, about 30g`,`Steam the ${x} for 8–12 min until very soft, then mash or chop small and stir in.`];
+    if(g==="Veg")return [`30g ${x}, prepared as below`,`Peel roots and remove any squash seeds or firm stems. Dice the ${x} small and steam separately for about 10–15 min until easily squashed, then mash or chop finely and mix in.`];
     if(g==="Fruit")return [`30g ripe ${x}`,`Remove skin, pips, cores and stalks from the ${x}; soften if needed, then mash thoroughly and stir through.`];
     if(g==="Herbs")return [`A tiny pinch of ${x}`,`Stir in a tiny pinch of ${x}.`];
     if(g==="Protein")return [`A small portion of ${x}, about 30g`,`Cook the ${x} through fully, chop very small and stir in.`];

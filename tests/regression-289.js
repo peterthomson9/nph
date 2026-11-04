@@ -42,7 +42,7 @@ assert(!d.review('b1').issues.some(i=>/^Milk/.test(i.t))&&!d.review('b9').issues
 open('b2');assert(!document.querySelector('[data-lhproduct],[data-lhdairy]'),'no product prompts');await close();
 // Rendered swap preparation and added quantities are scaled by the main's two-portion basis.
 S.lh['is-b'+(t+1)]={r:'b1',m:{banana:'apple','+pb':1}};open('b1','b'+(t+1));
-assert(text('.steps').includes('Cook until easily squashed'),'authored fruit preparation before swapped method');await close();
+assert(/Steam.*until easily squashed/.test(text('.steps'))&&!text('.steps').includes('For this ingredient swap'),'swapped fruit cooks once before assembly');await close();
 S.lh['is-test']={r:'s17',m:{'+peas':1}};open('s17','test');assert(text('.addli').includes('2 tbsp'),'addition base quantity');
 await close();S.lh['rs-s17']={m:{'+peas':1}};open('s17');document.querySelector('[data-dd="d"]').click();document.querySelector('[data-dopt="3"]').click();
 assert(text('.addli').includes('3 tbsp')&&text('.steps').includes('3–4 min'),'addition scales without scaling cooking time');await close();delete S.lh['rs-s17'];
