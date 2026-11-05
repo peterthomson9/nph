@@ -32,11 +32,11 @@ async def main():
    await wait(p,'nphShared.user!==null');await wait(n,'nphShared.user!==null')
    await p.evaluate("put('notes','sync-note',{text:'P starting copy'});put('stock','sync-stock',{qty:2});NPH_STORE.flush()")
    await n.evaluate("put('notes','n-local',{text:'N before joining'});NPH_STORE.flush()")
-   await p.evaluate('openSettings()');await p.locator('[data-shared="create"]').click();await p.locator('[data-shared="confirm-create"]').click()
+   await p.evaluate('openSettings("Shared household")');await p.locator('[data-shared="create"]').click();await p.locator('[data-shared="confirm-create"]').click()
    await wait(p,"NPH_STORE.getSync()?.mode==='connected'&&nphShared.live&&!nphShared.pending")
    await p.locator('[data-shared="invite"]').click();await wait(p,"sharedInvitation.length===32")
    code=await p.evaluate('sharedInvitation')
-   await n.evaluate('openSettings()');await n.locator('[data-shared="join"]').click();await n.locator('#shared-code').fill(code);await n.locator('[data-shared="confirm-join"]').click()
+   await n.evaluate('openSettings("Shared household")');await n.locator('[data-shared="join"]').click();await n.locator('#shared-code').fill(code);await n.locator('[data-shared="confirm-join"]').click()
    await wait(n,"NPH_STORE.getSync()?.mode==='connected'&&nphShared.live&&!nphShared.pending")
    assert await n.evaluate("S.notes['sync-note'].text")=='P starting copy'
    assert await n.evaluate("!S.notes['n-local']")

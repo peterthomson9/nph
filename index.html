@@ -28,6 +28,21 @@ dialog:has(.calcard){margin:auto;width:calc(100% - 24px);max-width:380px;border-
 dialog:has(.calcard)::before{display:none}
 @media(prefers-reduced-motion:no-preference){dialog[open]:has(.calcard){animation:popin .14s cubic-bezier(.2,.8,.2,1)}}
 @media(prefers-reduced-motion:reduce){dialog[open]:has(.calcard){animation:none}}
+</style><style>
+:root{--ok-text:#226c49;--blue-text:#175f95}
+:root[data-theme=dark]{--ok-text:var(--ok);--blue-text:var(--lilh)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--ok-text:var(--ok);--blue-text:var(--lilh)}}
+#card .opts,#card .og,#card .ogbody,#card .optrow{min-width:0;max-width:100%;box-sizing:border-box}
+#card .opts,#card .ogbody{grid-template-columns:minmax(0,1fr)}
+#card .optrow .opt{display:grid;grid-template-columns:18px minmax(0,1fr);width:0;text-align:left}
+#card .optrow .opt small{grid-column:2;white-space:normal;text-align:left;margin:0;padding:0;overflow-wrap:anywhere}
+#card .optmore{width:38px}
+#card .optrow.pickwarn{background:var(--warn-bg)}
+#card .optrow.pickwarn small,#card .optrow.pickwarn .optmore{color:var(--warn)}
+.sets details>summary{display:flex;align-items:center;gap:8px;min-height:40px;cursor:pointer;color:var(--muted);font-weight:800;font-size:var(--fs-cap)}
+.sets details>summary .section-status{margin-left:auto;color:var(--warn)}
+.sets details>summary .chev{width:14px}
+.sets details[open]>summary .chev{transform:rotate(180deg)}
 </style></head><body>
 <title>NPH</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -1695,8 +1710,8 @@ html,body{overflow-anchor:none}
 .day header .dsb{color:var(--ok);background:color-mix(in srgb,var(--ok) 15%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--ok) 45%,transparent);margin-left:6px}.day header .dsb.on{background:var(--ok);color:var(--on-acc)}.day header .dsb:focus-visible{outline-color:var(--ok)}.day header .dwb:has(+.dsb){margin-right:0}.days .day:not(.dwon) .meal.swshow em{color:var(--ok)!important;font-weight:700!important}.meal.swshow em .nw{color:var(--muted)}
 /* v2.92: one selection/focus ring, colour-coded ingredient changes and compact serving heading. */
 .setseg button[aria-pressed="true"]:focus-visible,.sgrp .setseg button[aria-pressed="true"]:focus-visible{outline:2px solid var(--sc,var(--acc));outline-offset:-2px;box-shadow:none}
-.days .day:not(.dwon) .meal.swshow em .change-swap{color:var(--ok)}
-.days .day:not(.dwon) .meal.swshow em .change-add{color:var(--lilh)}
+.days .day:not(.dwon) .meal.swshow em .change-swap{color:var(--ok-text)}
+.days .day:not(.dwon) .meal.swshow em .change-add{color:var(--blue-text)}
 .days .day:not(.dwon) .meal.swshow em .change-remove{color:var(--warn)}
 .days .meal.swshow em{display:block;-webkit-line-clamp:unset;overflow:visible;overflow-wrap:anywhere}
 .serving-head{padding:12px;border-radius:12px;background:var(--chip);border:1px solid var(--line);margin-bottom:12px}
@@ -2562,7 +2577,7 @@ function setQty(k,q){const cur=stockOf(k);put("stock",k,{...cur,out:cur.out!==fa
 
 /* ================= Meal planner (one engine, two pages) ================= */
 const PLANNERS={};
-const NPH_V=window.NPH_VERSION||"2.116";
+const NPH_V=window.NPH_VERSION||"2.117";
 function Planner(cfg){
   const id=cfg.id, R=cfg.R, T=cfg.T, IC=cfg.IC, BLK=cfg.BLK, ANCHOR=cfg.anchor;
   const P={id,cfg};
@@ -3146,9 +3161,22 @@ function Planner(cfg){
     /* recipes that need a deleted item don't show; a past day isn't held to today's stock or repeats */
     const keepK=k=>!unavail(k)||k===p.cur;p.list=p.list.filter(keepK);if(p.groups)p.groups=p.groups.map(g=>({...g,keys:g.keys.filter(keepK)})).filter(g=>g.keys.length);
     if(c.n<todayN()){p.why=()=>"";p.note=""}$("card").className="card";$("dlg").classList.add("mid");
-    const seen=new Set();
-    const opt=k=>{const why=p.why(k),isCur=k===p.cur,rep=why&&!isCur&&soft(why),fx=why&&!isCur&&!rep&&fixOf(p,k),off=why&&!isCur&&!rep&&!fx;if(rep)seen.add(softKind(why));if(fx)seen.add("fix");
-      return `<div class="optrow${isCur?" cur":""}${off?" off":""}${rep?" rep "+softKind(why):""}${fx?" fix":""}"><button class="opt${isCur?" cur":""}${rep?" rep":""}${fx?" fix":""}" style="--c:var(--i-${icOf(k)});--tcol:var(--${R[k].t})" ${fx?`data-preview="${k}" title="Swap the missing ingredient to add this"`:`data-pick="${k}"`} ${off?"disabled":""}>${ic(icOf(k))}${esc(R[k].n)}${isCur?"<small>Now</small>":why?`<small>${esc(why)}</small>`:""}</button><button class="optmore" data-preview="${k}" aria-label="View the ${esc(R[k].n)} recipe" title="View recipe">${ic("dots")}</button></div>`};
+    const menu=choiceContext(c);
+    function mealWarnings(k,ik,sm){
+      if(!NUT||c.n<todayN()||!["main","day","bf"].includes(c.kind))return [];
+      const issues=dietIssues(k,sm,menu.slot||"B",ik).map(issue=>issue.t);
+      issues.push(dayGasWhy(k,sm,menu.slot,menu.n,ik));
+      return issues.filter(t=>t&&!t.startsWith("Earlier batch:"));
+    }
+    const opt=k=>{
+      const why=p.why(k),isCur=k===p.cur,rep=why&&!isCur&&soft(why),fx=why&&!isCur&&!rep&&fixOf(p,k),off=why&&!isCur&&!rep&&!fx;
+      const info=isCur&&["main","day"].includes(c.kind)&&c.n>=todayN()?mainInfo(c.slot,c.n):null;
+      const warnings=new Set([...(info?.warns||[]),why].filter(Boolean));
+      for(const warning of mealWarnings(k,info?.ik,subsOf(k,info?.ik)))warnings.add(warning);
+      const advisory=[...warnings].some(w=>!/^(Had in the last|Already this week|Twice this week)/.test(w));
+      const detail=[isCur?"Now":"",...warnings].filter(Boolean).join(" · ");
+      return `<div class="optrow${isCur?" cur":""}${off?" off":""}${rep?" rep "+softKind(why):""}${fx?" fix":""}${advisory?" pickwarn":""}"><button class="opt${isCur?" cur":""}" style="--c:var(--i-${icOf(k)});--tcol:var(--${R[k].t})" ${fx?`data-preview="${k}" title="Swap the missing ingredient to add this"`:`data-pick="${k}"`} ${off?"disabled":""}>${ic(icOf(k))}${esc(R[k].n)}${detail?`<small>${esc(detail)}</small>`:""}</button><button class="optmore" data-preview="${k}" aria-label="View the ${esc(R[k].n)} recipe" title="View recipe">${ic("book")}</button></div>`;
+    };
     /* meals waiting in the fridge or freezer: one row per cooking, per place */
     const okKind=r=>R[r]&&(R[r].ta||(c.kind==="n"?R[r].t==="n"||cfg.typeOrder.includes(R[r].t):c.kind==="p"?R[r].t!=="n":cfg.typeOrder.includes(R[r].t)||["n","p"].includes(R[r].t)));
     const atAbs=absOf(c.n),stRows={fridge:[],freezer:[]};
@@ -3163,9 +3191,12 @@ function Planner(cfg){
         const rdy=w==="fridge"?Math.max(0,...ok.map(thawReady)):0;
         stRows[w].push({fid,r:lot.r,free,exp,rdy:rdy>Date.now()?rdy:0,late:rdy>0&&c.slot&&typeof slotMs==="function"&&rdy>slotMs(id,atAbs,c.kind==="bf"?"B":c.slot),bad:sts.some(x=>x.expired),mv:(w==="freezer"||sts.some(x=>!x.expired&&x.exp>=atAbs))&&s.fut.some(u=>u.alloc.some(a=>a.w===w))})})});
     const stOpt=(w,o)=>{const k=o.r,named=P.nameOfLot(o.fid,foodLots()[o.fid]),off=o.free<=0,mv=off&&o.mv&&!o.bad;
-      if(o.past)return `<div class="optrow stored${o.mine?" cur":""}"><button class="opt${o.mine?" cur":""}" style="--c:var(--i-${icOf(k)});--tcol:var(--${R[k].t})" data-fixpick="${o.fid}:${w}" data-fixat="${pslot}:${c.n}:${ftag}">${ic(icOf(k))}${esc(named)}<small>${o.mine?"Now":`Made ${fmtAbs(o.made,{weekday:"short",day:"numeric"})} · ${o.free} left then`}</small></button><button class="optmore" data-preview="${k}" data-fz="${o.fid}:${w}" aria-label="View the ${esc(named)} recipe" title="View recipe">${ic("dots")}</button></div>`;
+      if(o.past)return `<div class="optrow stored${o.mine?" cur":""}"><button class="opt${o.mine?" cur":""}" style="--c:var(--i-${icOf(k)});--tcol:var(--${R[k].t})" data-fixpick="${o.fid}:${w}" data-fixat="${pslot}:${c.n}:${ftag}">${ic(icOf(k))}${esc(named)}<small>${o.mine?"Now":`Made ${fmtAbs(o.made,{weekday:"short",day:"numeric"})} · ${o.free} left then`}</small></button><button class="optmore" data-preview="${k}" data-fz="${o.fid}:${w}" aria-label="View the ${esc(named)} recipe" title="View recipe">${ic("book")}</button></div>`;
       const lab=o.bad&&off?"Past its date":mv?"All planned · tap to move here":off?"All planned":`${o.free} left · ${o.rdy?`thawing, ready about ${readyTxt(o.rdy)}${o.late?": too late for this meal":""}`:w==="fridge"?(o.exp===todayAbs()?"eat today":`eat by ${fmtAbs(o.exp,{weekday:"short"})}`):`keeps till ${fmtAbs(o.exp,{day:"numeric",month:"short"})}`}`;
-      return `<div class="optrow stored${off?" off":""}${o.bad?" expd":""}${o.late?" thawl":""}"><button class="opt" style="--c:var(--i-${icOf(k)});--tcol:var(--${R[k].t})" ${mv?`data-fzmove="${o.fid}:${w}"`:`data-fzpick="${o.fid}:${w}" ${off?"disabled":""}`}>${ic(icOf(k))}${esc(named)}<small>${esc(lab)}</small></button><button class="optmore" data-preview="${k}" data-fz="${o.fid}:${w}" aria-label="View the ${esc(named)} recipe" title="View recipe">${ic("dots")}</button></div>`};
+      const lot=foodLots()[o.fid],ik="@lot:"+o.fid;
+      const warnings=mealWarnings(k,ik,lot.facts?.sm||subsOf(k,ik));
+      if(!off&&o.free<(half?1:perDay))warnings.push(plural(o.free,"portion")+" available");
+      return `<div class="optrow stored${(warnings.length||o.late)&&!o.bad?" pickwarn":""}${off?" off":""}${o.bad?" expd":""}${o.late?" thawl":""}"><button class="opt" style="--c:var(--i-${icOf(k)});--tcol:var(--${R[k].t})" ${mv?`data-fzmove="${o.fid}:${w}"`:`data-fzpick="${o.fid}:${w}" ${off?"disabled":""}`}>${ic(icOf(k))}${esc(named)}<small>${esc([lab,...new Set(warnings)].join(" · "))}</small></button><button class="optmore" data-preview="${k}" data-fz="${o.fid}:${w}" aria-label="View the ${esc(named)} recipe" title="View recipe">${ic("book")}</button></div>`};
     /* on a batch's cook day, a takeaway or stored food pushes the batch back a day (and the later ones with it) */
     const shTxt=(()=>{if(c.kind!=="main"||c.n<todayN()||!R[p.cur]||R[p.cur].ta||blockAt(c.slot,c.n).start!==c.n)return "";
       return `Picking one of these moves ${R[p.cur].n} to ${fmt(c.n+1,{weekday:"long"})} with all its days. Every ${SLOTWORD[c.slot]} after it moves a day later too.`})(),
@@ -3187,15 +3218,13 @@ function Planner(cfg){
     /* short title, the date under it, and a key for the colours actually in the list (v2.69) */
     const tm=/^(Swap|Add) (.+) (breakfast|lunch|dinner|bake)$/.exec(p.title),tn=/^((?:N|P)'s \w+) on (.+)$/.exec(p.title);
     const ttl=tm?tm[1]+" "+tm[3]:tn?tn[1]:p.title,sub=tm?tm[2]:tn?tn[2]:"";
-    const KEY=[["rep","--rep","Recent"],["keep","--keep","Keeps 2 days"],["fix","--warn","Missing"]].filter(([k])=>seen.has(k)&&!pastPick);
     $("card").innerHTML=`<header><div class="ht"><h2>${ttl}</h2>${sub?`<p class="hdate">${sub}</p>`:""}</div><button class="close" aria-label="Close">×</button></header>
-      ${KEY.length?`<div class="hleg">${KEY.map(([,c,t])=>`<span style="--kc:var(${c})">${t}</span>`).join("")}</div>`:""}
-      ${p.note&&!pastPick?`<p class="note">${p.note}</p>`:""}
+      ${p.note&&!p.note.startsWith("Just this day.")&&!pastPick?`<p class="note">${p.note}</p>`:""}
       ${pastPick?"":p.groups?`<div class="rand2"><button class="rand" data-rand="open" aria-label="Randomise from open groups"><span>${ic("dice")}Open groups</span></button><button class="rand" data-rand="all" aria-label="Randomise from all recipes" ${pool.length?"":"disabled"}><span>${ic("dice")}All recipes</span></button></div>`
         :`<button class="rand" data-rand="all" ${pool.length?"":"disabled"}><span>${ic("dice")}Randomise</span></button>`}
       ${pastPick?`<p class="note pastn">${ic("cal")}This day has passed: pick what you actually had. Leftovers come off what was stored then${pslot==="B"||(half&&!(splitOf(pslot,c.n)||{})[c.kind==="n"?"p":"n"])?"":", and the planned meal carries on the next day"}.</p>`:""}
       ${fxCur?(()=>{const pl=(fxCur.was.x&&fxCur.was.x.v)||(fxCur.was.x?null:p.plan);return `<button class="todaybtn backplan" data-fixplan data-fixat="${pslot}:${c.n}">${R[pl]?`Back to the plan: <span style="color:var(--i-${icOf(pl)})">${ic(icOf(pl))}${esc(R[pl].n)}</span>`:"Undo the leftovers: leave it empty"}</button>`})():p.plan&&p.cur!==p.plan?`<button class="todaybtn backplan" data-pick="${p.plan}">Back to the plan: <span style="color:var(--i-${(p.groups&&(p.groups.find(g=>g.keys.includes(p.plan))||{}).ic)||icOf(p.plan)})">${ic(icOf(p.plan))}${esc(R[p.plan].n)}</span></button>`:""}
-      <div class="opts">${stGroups}${body}${p.ta?`<div class="og tago shut" style="--kc:var(--ta)"><button class="oghead" data-og aria-expanded="false">${ic("takeout")}<span>Takeaway</span><small>${TA.length} options</small>${ic("chev","chev")}</button><div class="ogbody" hidden>${shNote}${TA.map(k=>`<div class="optrow${k===p.cur?" cur":""}"><button class="opt${k===p.cur?" cur":""}" style="--c:var(--i-${icOf(k)});--tcol:var(--ta)" data-tapick="${k}">${ic(icOf(k))}${esc(R[k].n)}${k===p.cur?"<small>Now</small>":""}</button><button class="optmore" data-tapv="${k}" aria-label="${esc(R[k].n)} details" title="Details">${ic("dots")}</button></div>`).join("")}</div></div>`:""}</div>`;
+      <div class="opts">${stGroups}${body}${p.ta?`<div class="og tago shut" style="--kc:var(--ta)"><button class="oghead" data-og aria-expanded="false">${ic("takeout")}<span>Takeaway</span><small>${TA.length} options</small>${ic("chev","chev")}</button><div class="ogbody" hidden>${shNote}${TA.map(k=>`<div class="optrow${k===p.cur?" cur":""}"><button class="opt${k===p.cur?" cur":""}" style="--c:var(--i-${icOf(k)});--tcol:var(--ta)" data-tapick="${k}">${ic(icOf(k))}${esc(R[k].n)}${k===p.cur?"<small>Now</small>":""}</button><button class="optmore" data-tapv="${k}" aria-label="${esc(R[k].n)} details" title="Details">${ic("book")}</button></div>`).join("")}</div></div>`:""}</div>`;
     $("dlg").style.setProperty("--acc",`var(--${cfg.accent})`);
     $("dlg").showModal();
     const ro=$("card").querySelector('[data-rand="open"]');if(ro)ro.disabled=!P.openPoolSize();
@@ -3935,7 +3964,7 @@ function Planner(cfg){
     $(id+"-uses").innerHTML=needs.map(a=>`<span class="${altOut(a)?"out":""}">${esc(altName(a))}</span>`).join("");
     const LIVE=ORDER.filter(k=>!isGone(k)),TOTAL=LIVE.length,outN=LIVE.filter(isOut).length,bad=meals.filter(([r,ik])=>missing(r,ik).length).length,st=$(id+"-status");
     const st2=$(id+"-status2");st2.textContent=(outN?`${TOTAL-outN} of ${TOTAL} in stock`:"Everything in stock")+(bad?` · ${bad} meal${bad>1?"s":""} this week need${bad>1?"":"s"} a swap`:outN?" · this week is covered":"");st2.className="dlong"+(bad?" bad":"");
-    st.textContent=bad?`${bad} to swap`:outN?`${outN} run out`:"All in stock";
+    st.textContent=bad?`${bad} to swap`:outN?`${outN} run out`:"In stock";
     {const tk=root.querySelector('[data-act="allin"]');if(tk){tk.classList.toggle("allok",!outN);tk.title=outN?"Got everything: mark it all in stock":"Everything's in stock"}}
     st.className="ds"+(bad?" bad":"");
     $(id+"-pantry").innerHTML=cfg.pantryGroups().map(([cid,its])=>[cid,its.filter(i=>!isGone(i[0])).map(i=>[i[0],NAME[i[0]]])]).filter(g=>g[1].length).map(([cid,items])=>`<div class="pgroup fsec${folds.has("p-"+cid)?"":" shut"}${items.some(i=>isOut(i[0]))?" hasout":""}" style="--pc:var(--k-${cid})"><button class="fhead plab" data-fold="p-${cid}" aria-expanded="${folds.has("p-"+cid)}">${ic("chev","chev")}${ic(SHOP_IC[cid])}${catName[cid]}<small>${items.filter(i=>isOut(i[0])).length?items.filter(i=>isOut(i[0])).length+" out":""}</small></button><div class="pills">${items.map(([k,nm])=>`<label class="pill"><input type="checkbox" id="${id}-ing-${k}" data-ing="${k}"${isOut(k)?"":" checked"}><span>${esc(nm)}</span></label>`).join("")}</div></div>`).join("");
@@ -5076,7 +5105,7 @@ function stackCard(s,x){
     '<div class="row cooked-row'+(v.warnings.length?' has-warning':'')+(v.bad?' has-bad':'')+'">'+
     '<div class="meal '+(x.w==="fridge"?"fromfr":"fromfz")+(v.bad?" srcbad":v.warnings.length?" srcwarn":"")+'"><span class="bub">'+ic(P.icOf(lot.r))+'</span><span class="tx">'+
     '<b>'+esc(name)+badge+'</b><span class="cmeta">'+esc("Made "+dShort(lot.made)+" · "+plural(x.now,"portion"))+'</span>'+
-    '<em class="cstatus" style="--status:'+textColour+'">'+text+'</em></span></div>'+
+    '<em class="cstatus" style="--status:'+(textColour==="var(--ok)"?"var(--ok-text)":textColour==="var(--lilh)"?"var(--blue-text)":textColour)+'">'+text+'</em></span></div>'+
     '<button type="button" class="mdots" data-fdots="'+key+'" aria-expanded="false" aria-label="Buttons for '+esc(name)+'">'+ic("dots")+'</button></div>'+
     '<span class="cbar" style="--bar-colour:'+(phase?phase.colour:v.colour)+';--pct:'+(phase?phase.pct:v.pct)+'%" data-visible="'+(!timeMode||!!phase)+'" role="img" aria-label="'+esc(phase?phase.label:v.label)+'"><i></i></span>'+
     '<template class="cactions"><span class="edic" aria-hidden="true"></span>'+primary+action("cal","Change date",profile,"data-fdate")+action("x","Discard","var(--bad)","data-fdisc")+'</template></div>';
@@ -5139,7 +5168,7 @@ function renderFood(){
       toggle("freezing","snow",freezing,"Show freezing times","var(--k-freezer)")+toggle("thawing","fridge",thawing,"Show thawing times","var(--k-fridge)")+
       '</span><span class="cooked-count" aria-label="'+(list.length?plural(list.length,"meal"):"Empty")+(bad?"; "+plural(bad,"storage date issue"):"")+'">'+(list.length?plural(list.length,"meal"):"Empty")+'</span>'+
       '<button type="button" class="cooked-collapse" data-cat="'+key+'" aria-expanded="'+(!shutNow)+'" aria-label="'+(shutNow?"Expand":"Collapse")+" "+label+'">'+ic("chev")+'</button></header>'+
-      (shutNow?"":list.length?'<div class="fcards">'+list.map(([s,x])=>stackCard(s,x)).join("")+'</div>':'<p class="fempty">Nothing in the '+w+' for '+(foodWho==="lh"?"Lil H":"N & P")+'.</p>')+'</section>';
+      (shutNow?"":list.length?'<div class="fcards">'+list.map(([s,x])=>stackCard(s,x)).join("")+'</div>':'')+'</section>';
   }
   $("shop-food").innerHTML=html;
   $("shop-who").querySelectorAll("[data-who]").forEach(b=>b.setAttribute("aria-selected",b.dataset.who===foodWho));
@@ -5639,7 +5668,7 @@ async function applyBackup(file){
 document.addEventListener("click",async e=>{
   const button=e.target.closest("[data-backup-save],[data-backup-open],[data-backup-confirm],[data-backup-cancel],[data-backup-recovery]");
   if(!button||backupBusy)return;
-  if(button.hasAttribute("data-backup-cancel")){backupCandidate=null;openSettings();return}
+  if(button.hasAttribute("data-backup-cancel")){backupCandidate=null;openSettings("Backups");return}
   if(button.hasAttribute("data-backup-open")){$("backup-file").value="";$("backup-file").click();return}
   backupBusy=true;button.disabled=true;
   try{
@@ -5663,6 +5692,7 @@ document.addEventListener("change",async e=>{
 const UPD={reg:null,starting:null,checking:false,status:"Checking for updates…",ready:null,reloadReady:false,requested:false,lastCheck:0,dismissed:null};
 function updateSection(){return `<section class="sgrp" id="update-section"><h4>App updates</h4><div class="srow"><div class="stx"><b>Installed: v${esc(NPH_V)}</b><small data-update-status role="status" aria-live="polite">${esc(UPD.status)}</small></div><div class="acts two"><button class="todaybtn" data-update-check ${UPD.checking?"disabled":""}>Check for updates</button><button class="todaybtn" data-update-apply ${UPD.ready||UPD.reloadReady?"":"hidden"}>Update now</button></div></div></section>`}
 function paintUpdate(){
+  const summary=document.querySelector("#update-section .section-status");if(summary)summary.textContent=UPD.ready||UPD.reloadReady?"Update ready":"";
   document.querySelectorAll('[data-update-status]').forEach(e=>e.textContent=UPD.status);
   document.querySelectorAll('[data-update-check]').forEach(e=>e.disabled=UPD.checking||UPD.requested);
   document.querySelectorAll('[data-update-apply]').forEach(e=>{e.hidden=!UPD.ready&&!UPD.reloadReady;e.disabled=UPD.requested});
@@ -5752,7 +5782,7 @@ if("serviceWorker" in navigator)navigator.serviceWorker.addEventListener("contro
 document.addEventListener("click",e=>{
   if(e.target.closest("[data-update-check]"))checkUpdates(true);
   if(e.target.closest("[data-update-apply]"))applyUpdate();
-  if(e.target.closest("[data-update-view]")){try{updateSafe();openSettings();$("update-section").scrollIntoView({block:"center"});paintUpdate()}catch(error){toast(error.message)}}
+  if(e.target.closest("[data-update-view]")){try{updateSafe();openSettings("App updates");$("update-section").scrollIntoView({block:"center"});paintUpdate()}catch(error){toast(error.message)}}
   if(e.target.closest("[data-update-later]")){UPD.dismissed=UPD.ready||"reload";paintUpdate()}
 });
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)checkUpdates()});
@@ -5855,6 +5885,7 @@ document.addEventListener("click",async e=>{
 });
 
 function drawSettings(){const lay=PN.layout();
+  const expanded=new Set([...$("card").querySelectorAll("details[open][data-section]")].map(d=>d.dataset.section));
   const row=(icn,t,sub,ctl,cls)=>`<div class="srow${cls?" "+cls:""}"><div class="shd"><span class="sic">${ic(icn)}</span><span class="stx"><b>${t}</b>${sub?`<small>${sub}</small>`:""}</span></div>${ctl}</div>`;
   $("card").innerHTML=`<header><div class="ht"><h2>Settings</h2></div><button class="close" aria-label="Close">×</button></header>
     <div class="sets">
@@ -5863,12 +5894,21 @@ function drawSettings(){const lay=PN.layout();
         ${row("users","Whose phone",ME?`Notes and changes are tagged ${ME}`:"Pick one so notes and changes are tagged",seg("data-meopt",ME,[["P","P","--sc:var(--p)"],["N","N","--sc:var(--n)"]]),ME?"":"ask")}
         ${row(themePref==="dark"?"moon":"sun","Appearance","",seg("data-themeopt",themePref,[["dark",`${ic("moon")}Dark`],["light",`${ic("sun")}Light`]]))}</section>
       <section class="sgrp"><h4>Meal plan</h4>
-        ${row("cal","Layout","Auto: side by side on a big screen, one per row on a phone",seg("data-setlayout",lay,[[0,"Auto"],[1,`${ic("l1")}Cards`]]))}</section>
+        ${row("cal","Layout","More columns on wider screens",seg("data-setlayout",lay,[[0,"Auto"],[1,`${ic("l1")}One column`]]))}</section>
       ${updateSection()}
       ${sharedSection()}
       ${backupSection()}
-      <p class="sver">NPH v${NPH_V}</p>
-    </div>`}
+
+    </div>`;
+  for(const section of $("card").querySelectorAll(".sets > .sgrp")){
+    const heading=section.querySelector(":scope > h4");if(!heading)continue;
+    const title=heading.textContent,details=document.createElement("details"),summary=document.createElement("summary");
+    details.dataset.section=title;details.open=expanded.has(title);
+    summary.textContent=title;summary.insertAdjacentHTML("beforeend",'<small class="section-status"></small>'+ic("chev","chev"));
+    heading.remove();details.append(summary,...section.childNodes);section.append(details);
+  }
+  paintUpdate();paintShared();
+}
 let phoneChoice=null;
 function openPhonePrompt(){phoneChoice=null;$("card").className="card setcard phonecard";$("dlg").classList.add("mid","sm");$("dlg").style.setProperty("--acc","var(--np)");
   $("card").innerHTML=`<header><div class="ht"><h2>Whose phone is this?</h2></div></header><div class="sets"><section class="sgrp"><div class="srow">${seg("data-phonepick",null,[["P","P","--sc:var(--p)"],["N","N","--sc:var(--n)"]])}</div></section><div class="acts"><button class="rand" data-phoneconfirm disabled>Confirm</button></div></div>`;
@@ -5891,6 +5931,7 @@ function sharedBody(){
 }
 let sharedPaintKey="";
 function paintShared(){
+ const summary=document.querySelector("#shared-section .section-status");if(summary)summary.textContent=sharedError||window.nphShared?.error?"Needs attention":"";
  const c=window.nphShared,body=document.querySelector('[data-shared-body]');if(!body)return;
  const key=JSON.stringify([c?.user?.uid,c?.profile,NPH_STORE.getSync()?.mode,sharedError,sharedInvitation]);
  if(sharedPaintKey!==key){body.innerHTML=sharedBody();sharedPaintKey=key}
@@ -5925,12 +5966,12 @@ document.addEventListener("click",async e=>{
   if(action==="load"){await startShared();return}
   if(action==="login"){if(location.protocol==="file:")throw Error("Open the NPH website in Chrome to sign in.");await sharedAdapter.signIn();return}
   if(["create","join","existing"].includes(action)){sharedConfirm(action==="create"?"create":"join");return}
-  if(action==="cancel"){openSettings();return}
+  if(action==="cancel"){openSettings("Shared household");return}
   if(action==="copy"){await navigator.clipboard.writeText(sharedInvitation);toast("Invitation code copied");return}
   if(action==="confirm-create"||action==="confirm-join"){
    button.disabled=true;const code=$("shared-code")?.value.trim().toLowerCase()||"";
    if(action==="confirm-create")await nphShared.create();else await nphShared.join(code);
-   openSettings();return;
+   openSettings("Shared household");return;
   }
   if(action==="invite")sharedInvitation=await nphShared.invite();
   else if(action==="retry")await nphShared.retry();
@@ -5938,7 +5979,7 @@ document.addEventListener("click",async e=>{
  }catch(error){sharedError=error.message;const status=document.querySelector('[data-shared-confirm-status]');if(status)status.textContent=sharedError;toast(sharedError)}
  finally{if(button.isConnected)button.disabled=false;paintShared()}
 });
-function openSettings(){$("card").className="card setcard";$("dlg").classList.add("mid","sm");$("dlg").style.setProperty("--acc",`var(--${current==="shop"?"shop":current==="lilh"?"lilh":"np"})`);drawSettings();if(!$("dlg").open)$("dlg").showModal()}
+function openSettings(section){$("card").replaceChildren();$("card").className="card setcard";$("dlg").classList.add("mid","sm");$("dlg").style.setProperty("--acc",`var(--${current==="shop"?"shop":current==="lilh"?"lilh":"np"})`);drawSettings();const detail=[...$("card").querySelectorAll("details")].find(d=>d.dataset.section===section);if(detail)detail.open=true;if(!$("dlg").open)$("dlg").showModal()}
 const setOpen=()=>$("dlg").open&&$("card").classList.contains("setcard");
 document.addEventListener("click",e=>{
   if(e.target.closest("[data-settings]")){openSettings();return}

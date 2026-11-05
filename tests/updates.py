@@ -69,7 +69,7 @@ async def main():
     # stale-write refusal is tested separately in storage.py.
     await page.reload();await page.wait_for_function("typeof UPD!=='undefined' && UPD.reg && !UPD.checking")
     await page.evaluate('NPH_STORE.flush()');saved=await page.evaluate('JSON.stringify(S)')
-    await page.evaluate('openSettings()')
+    await page.evaluate('openSettings("App updates")')
     await second.evaluate("editing=true;window.editSentinel='unsaved text'")
     async with page.expect_navigation():await page.locator('[data-update-apply]').click()
     await page.wait_for_function("typeof UPD!=='undefined' && NPH_V==='2.106' && !UPD.checking")
@@ -84,7 +84,7 @@ async def main():
     deploy(webroot,'2.107');await page.evaluate('checkUpdates(true)');await page.wait_for_function("UPD.ready==='2.107'")
     await ctx.set_offline(True);await page.evaluate('checkUpdates(true)')
     assert await page.evaluate('UPD.status.includes("ready")')
-    await page.evaluate('openSettings()')
+    await page.evaluate('openSettings("App updates")')
     async with page.expect_navigation():await page.locator('[data-update-apply]').click()
     await page.wait_for_function("typeof UPD!=='undefined' && NPH_V==='2.107' && !UPD.checking")
     assert await page.evaluate("S.notes['upgrade-test'].text")=='Keep IDs, 🥕 and <text>'
@@ -116,7 +116,7 @@ async def main():
        ctx=await new_context(theme,width);pg=await ctx.new_page();pg.on('pageerror',lambda e:errors.append(str(e)))
        if name=='before':await pg.goto((ROOT/'before/index.html').as_uri())
        else:await pg.goto(url);await pg.wait_for_function("typeof UPD!=='undefined' && UPD.reg && !UPD.checking")
-       await pg.evaluate('openSettings()');await pg.wait_for_timeout(350)
+       await pg.evaluate('openSettings("App updates")');await pg.wait_for_timeout(350)
        if name=='after':
         await pg.evaluate("UPD.ready='2.106';UPD.status='v2.106 is ready. Your saved data will be kept.';paintUpdate()")
         await pg.locator('[data-update-apply]').focus();await pg.locator('#update-section').scroll_into_view_if_needed()

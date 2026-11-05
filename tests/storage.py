@@ -74,7 +74,7 @@ async def main():
    await page.reload();await page.wait_for_function("typeof S!=='undefined'");await page.evaluate('NPH_STORE.flush()')
    previous=await page.evaluate('NPH_STORE.read()')
    previous_snapshot_ids=set(await page.evaluate('NPH_STORE.snapshots.map(s=>s.id)'))
-   await page.evaluate('openSettings()');await page.locator('#backup-file').set_input_files(SOURCE/'tests/fixtures/backups/v1-2.100.json')
+   await page.evaluate('openSettings("Backups")');await page.locator('#backup-file').set_input_files(SOURCE/'tests/fixtures/backups/v1-2.100.json')
    await page.locator('[data-backup-confirm]').wait_for()
    await page.locator('[data-backup-cancel]').click();assert await page.evaluate('NPH_STORE.read()')==previous
    await page.locator('#backup-file').set_input_files(SOURCE/'tests/fixtures/backups/v1-2.100.json')
@@ -85,13 +85,13 @@ async def main():
    restore=next(s for s in copies if s['reason']=='Before restoring data' and s['id'] not in previous_snapshot_ids)
    snapshot=await page.evaluate('async id=>await NPH_STORE.getSnapshot(id)',restore['id'])
    assert snapshot['data']==previous, {col:{key:{'before':previous[col].get(key),'saved':snapshot['data'][col].get(key)} for key in previous[col].keys()|snapshot['data'][col].keys() if previous[col].get(key)!=snapshot['data'][col].get(key)} for col in previous if previous[col]!=snapshot['data'][col]}
-   await page.evaluate('openSettings()');await page.locator('[data-storage-recovery]').click()
+   await page.evaluate('openSettings("Backups")');await page.locator('[data-storage-recovery]').click()
    await page.locator('[data-snapshot-review="'+restore['id']+'"]').click()
    async with page.expect_navigation():await page.locator('[data-backup-confirm]').click()
    await page.wait_for_function("typeof S!=='undefined'")
    assert await page.evaluate('NPH_STORE.initial')==previous
    assert len(await page.evaluate('NPH_STORE.snapshots'))<=12
-   await page.evaluate('openSettings()')
+   await page.evaluate('openSettings("Backups")')
    async with page.expect_download() as info:await page.locator('[data-backup-save]').click()
    download=await info.value;await download.save_as(ROOT/'roundtrip-backup.json')
    exported=json.loads((ROOT/'roundtrip-backup.json').read_text(encoding='utf-8'))
@@ -137,7 +137,7 @@ async def main():
        await ready(pg,url)
        await pg.wait_for_function('typeof UPD!=="undefined"&&!UPD.checking')
        assert not await pg.evaluate('UPD.ready===NPH_V')
-      await pg.evaluate('openSettings()');await pg.wait_for_timeout(350)
+      await pg.evaluate('openSettings("Backups")');await pg.wait_for_timeout(350)
       await pg.locator('[data-backup-save]').scroll_into_view_if_needed()
       assert await pg.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
       await pg.screenshot(path=str(ROOT/f'screenshots/{name}-{theme}-{width}.png'))

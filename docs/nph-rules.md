@@ -429,3 +429,5 @@ A fresh browser with no valid P/N identity opens a dedicated Whose phone is this
 ### Presentation convention — v2.100, 2 November 2026
 
 Apply the owner-approved compact typography and sentence-case roles from the style guide. Preserve full essential instructions and recipe names, readable wrapping, text-input minimum size, and all meal/storage/nutrition behaviour. Keep meal names 12px and Cooked date/portion metadata 10px.
+
+v2.117: Picker warning presentation uses effective ingredient and day checks; choose and randomise retain their existing eligibility rules.

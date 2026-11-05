@@ -23,7 +23,7 @@ async def main():
     page.on('pageerror',lambda e:errors.append(str(e)))
     await page.goto((APP/'index.html').as_uri());await page.wait_for_function("typeof S!=='undefined'");await page.evaluate('NPH_STORE.flush()')
     await page.evaluate("()=>{"+(ROOT/'cooked-fixtures-297.js').read_text(encoding='utf-8')+"\nS.custom['test-custom']={name:'A & B <test>',cat:'cup'};S.stock['cu-test-custom']={qty:3,out:false};S.items['cu-test-custom']={name:'Long custom item'};S.notes['test-note']={pl:'lh',r:'s12',sec:'method',who:'P',text:'Keep <exact> & Unicode: é 🥕',at:Date.now()};S.favs['lh-s12']={N:true};saveLocal();}")
-    await page.evaluate('openSettings()')
+    await page.evaluate('openSettings("Backups")')
     async with page.expect_download() as info:await page.locator('[data-backup-save]').click()
     download=await info.value;backup_path=ROOT/'roundtrip-backup.json';await download.save_as(backup_path)
     file=json.loads(backup_path.read_text(encoding='utf-8'));assert file['formatVersion']==1
@@ -64,7 +64,7 @@ async def main():
     # Restore into a fresh phone context, through the real file input and confirmation.
     fresh=await context(browser,'light');target=await fresh.new_page();target.on('pageerror',lambda e:errors.append(str(e)))
     await target.goto((APP/'index.html').as_uri());await target.wait_for_function("typeof S!=='undefined'");await target.evaluate('NPH_STORE.flush()')
-    await target.evaluate("()=>{S.notes['previous']={text:'Recovery sentinel'};saveLocal();openSettings()}")
+    await target.evaluate("()=>{S.notes['previous']={text:'Recovery sentinel'};saveLocal();openSettings('Backups')}")
     await target.evaluate('NPH_STORE.flush()')
     previous=await target.evaluate('JSON.stringify(S)')
     backup_path=ROOT/'fixtures/backups/v1-2.100.json'
@@ -84,7 +84,7 @@ async def main():
     snapshot_id=await target.evaluate("NPH_STORE.snapshots.find(s=>s.reason==='Before restoring data').id")
     recovery=await target.evaluate('async id=>await NPH_STORE.getSnapshot(id)',snapshot_id)
     assert recovery['data']==json.loads(previous)
-    await target.evaluate('openSettings()');await target.locator('[data-storage-recovery]').click()
+    await target.evaluate('openSettings("Backups")');await target.locator('[data-storage-recovery]').click()
     await target.locator('[data-snapshot-review="'+snapshot_id+'"]').click()
     async with target.expect_navigation():await target.locator('[data-backup-confirm]').click()
     await target.wait_for_function("typeof S!=='undefined'")
@@ -96,7 +96,7 @@ async def main():
       for width in [400,320]:
         for version in ['after']:
           ctx=await context(browser,theme,width);pg=await ctx.new_page();pg.on('pageerror',lambda e:errors.append(str(e)))
-          await pg.goto((APP/'index.html').as_uri());await pg.wait_for_function("typeof S!=='undefined'");await pg.evaluate('openSettings()')
+          await pg.goto((APP/'index.html').as_uri());await pg.wait_for_function("typeof S!=='undefined'");await pg.evaluate('openSettings("Backups")')
           await pg.wait_for_timeout(350)
           if version=='after':
             await pg.locator('[data-backup-save]').focus()

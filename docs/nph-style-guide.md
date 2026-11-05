@@ -676,3 +676,7 @@ Correct the existing method text in place; no new section, explanatory warning b
 ### Pass 61 — fixed-slot choices and approved refresh (v2.116, 5 Nov 2026)
 
 Apply P's approved real-app refresh preview: a restrained 40px surface indicator, profile-coloured 24px spinner, resistant finger tracking and soft return with stationary page content. Honour safe-area insets and reduced motion. Keep the existing selection-window layout; correct titles/groups to match the visible meal slot after moving cards. Verified all three refresh surfaces in light/dark at 320/400px with actual Chromium touch input, no overflow, no reload/page jump and clean cancellation. The indicator is status feedback, not a modal. Existing window Back handling remains. See slots-refresh-v2.116.md.
+
+### Approved picker and Settings review (v2.117)
+
+Use a trailing book for recipe previews and place wrapping reasons below the choice. Keep recent-only advice blue, everyday warnings amber and expired food red. Omit the colour key and Just this day introduction. Settings opens with the five sections folded, with actionable update and household summaries; use the installed version in App updates. Use darker light-theme semantic text for change details and Cooked status. Keep the empty storage header count and use concise stock/layout labels.

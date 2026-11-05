@@ -28,6 +28,7 @@ async def main():
    assert not await page.locator('#dlg').evaluate('(d)=>d.open')
    await page.locator('#page-np [data-settings]').click()
    assert await page.locator('[data-meopt="'+choice+'"]').get_attribute('aria-pressed')=='true'
+   await page.locator('summary').filter(has_text='This phone').click()
    other='P' if choice=='N' else 'N';await page.locator('[data-meopt="'+other+'"]').click()
    assert await page.evaluate('localStorage.getItem("nph-me")')==other
    assert not errors,errors
