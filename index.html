@@ -3,6 +3,17 @@
 .prep-list li+li,.review-warnings li+li{margin-top:7px}
 .review-warnings{color:var(--warn)}
 .serve-variant{font-size:var(--fs-sm);line-height:1.6;margin-top:12px}.serve-variant summary{cursor:pointer;font-weight:700;color:var(--acc)}
+html{overscroll-behavior-y:contain}
+.pull-refresh{--pull:0px;--progress:0;position:fixed;z-index:90;top:env(safe-area-inset-top,0px);left:calc(50% - 20px);width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--surface);color:var(--refresh-accent,var(--np));box-shadow:var(--shadow);pointer-events:none;opacity:var(--progress);transform:translate3d(0,calc(var(--pull) - 46px),0);transition:transform 220ms cubic-bezier(.22,.8,.25,1),opacity 180ms ease;will-change:transform,opacity}
+.pull-refresh[hidden]{display:none}
+.pull-refresh.pulling{transition:none}
+.pull-refresh svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;transform:rotate(var(--turn,0deg))}
+.pull-refresh circle{stroke-dasharray:50.3;stroke-dashoffset:calc(50.3*(1 - var(--progress)*.8))}
+.pull-refresh.loading svg{animation:refresh-spin .7s linear infinite}
+.pull-refresh.loading circle{stroke-dasharray:38 13;stroke-dashoffset:0}
+@keyframes refresh-spin{to{transform:rotate(calc(var(--turn,0deg) + 360deg))}}
+@media(prefers-reduced-motion:reduce){.pull-refresh{transition:opacity 100ms}.pull-refresh.loading svg{animation:none}}
+
 </style><style>#app-update{position:fixed;left:12px;right:12px;bottom:calc(72px + env(safe-area-inset-bottom,0px));max-width:440px;margin:auto;z-index:85;display:flex;align-items:center;gap:8px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:12px;box-shadow:var(--shadow);font-size:var(--fs-sm)}#app-update span{flex:1;font-weight:700}#app-update .todaybtn{min-height:42px;padding:0 10px;font-size:var(--fs-sm)}</style><style>/* Matched day/Cooked gutters; shared short navigation motion. */
 html,body{overflow-x:clip}
 .cooked-group.cat{border-left:1px solid var(--line)}
@@ -2551,7 +2562,7 @@ function setQty(k,q){const cur=stockOf(k);put("stock",k,{...cur,out:cur.out!==fa
 
 /* ================= Meal planner (one engine, two pages) ================= */
 const PLANNERS={};
-const NPH_V=window.NPH_VERSION||"2.115";
+const NPH_V=window.NPH_VERSION||"2.116";
 function Planner(cfg){
   const id=cfg.id, R=cfg.R, T=cfg.T, IC=cfg.IC, BLK=cfg.BLK, ANCHOR=cfg.anchor;
   const P={id,cfg};
@@ -2771,6 +2782,7 @@ function Planner(cfg){
   const bfGroups=()=>{const cats=cfg.bfCats||[],used=new Set(cats.flatMap(x=>x[2]));const gs=cats.map(([label,icn,keys])=>({label,ic:icn,keys:keys.filter(k=>R[k]&&R[k].t==="bf")}));
     const rest=BF.filter(k=>!used.has(k));if(rest.length)gs.push({label:"Other",ic:"cup",keys:rest});return gs.filter(g=>g.keys.length)};
   const BF=keysOf(t=>t==="bf"),LL=BF.filter(k=>R[k].ll), NL=keysOf(t=>t==="n"), PL=keysOf(t=>t==="p"), BAKE=keysOf(t=>t==="bake");
+  for(const k of BF)R[k].max=1; // A fresh breakfast never becomes a multi-day batch after a card move.
   const SLOTWORD={B:"breakfast",L:"lunch",D:"dinner"};
   const SK="__skip";  /* a removed (skipped) meal */
   const OFF=cfg.cycleOff||0, cyc=n=>mod(n-OFF,28);  /* which day of the shown 4-week cycle */
@@ -3007,7 +3019,16 @@ function Planner(cfg){
   const bfAt=n=>ov("b-"+n)||(n<startN?SK:bfPlan(n));
   const bakePlan=n=>cfg.BAKEW[Math.floor(mod(n,28)/7)];
   const bakeAt=n=>ov("k-"+n)||(n<startN?SK:bakePlan(n));
-  const orderOf=n=>{const o=ov("o-"+n);return typeof o==="string"&&o.length===3?o:"BLD"};
+  const orderOf=n=>{const o=ov("o-"+n);return typeof o==="string"&&/^(BLD|BDL|LBD|LDB|DBL|DLB)$/.test(o)?o:"BLD"};
+  /* A moved card retains its source keys; the position owns the selection menu. */
+  const choiceContext=c=>{
+    if(c.kind==="bake")return c;
+    const source=c.kind==="bf"?"B":c.slot;
+    if(!["B","L","D"].includes(source))return c;
+    const slot="BLD"[orderOf(c.n).indexOf(source)];
+    if(slot===source)return c;
+    return {...c,slot,kind:["n","p"].includes(c.kind)?c.kind:slot==="B"?"bf":c.kind==="bf"?"day":c.kind};
+  };
   const splitOf=(slot,n)=>cfg.split?S[id]["sp-"+slot+n]:null;
   const dayMain=(slot,n)=>slot==="B"?bfAt(n):ov("x-"+slot+n)||(n<startN?SK:eff(blockAt(slot,n)));
   /* N's breakfast when it's first split: something different that's in stock */
@@ -3067,7 +3088,17 @@ function Planner(cfg){
     return {keys,strong:tier("strong"),mild:tier("mild"),possible:tier("possible"),unknown:keys.filter(k=>!LH_GAS[k]),issues};
   }
 
-  function pickerSpec(c){const p=pickerSpec0(c);if(NUT&&["main","day","bf"].includes(c.kind)){const w0=p.why;p.why=k=>w0(k)||dietWhy(k,c)}return p}
+  function pickerSpec(c){
+    const menu=choiceContext(c),p=pickerSpec0(menu);
+    if(menu.slot!==c.slot||menu.kind!==c.kind){
+      const source=pickerSpec0(c);p.cur=source.cur;p.plan=null;p.note=source.note;
+      const day=fmt(c.n,{weekday:"long",day:"numeric",month:"short"});
+      p.title=["n","p"].includes(c.kind)?c.kind.toUpperCase()+"'s "+SLOTWORD[menu.slot]+" on "+day:(p.cur===SK?"Add":"Swap")+" "+day+" "+SLOTWORD[menu.slot];
+    }
+    if(NUT&&["main","day","bf"].includes(c.kind)){const w0=p.why;p.why=k=>w0(k)||dietWhy(k,menu)}
+    if(menu.kind==="bf"&&p.cur===SK)p.title=p.title.replace(/^Swap /,"Add ");
+    return p;
+  }
   function pickerSpec0(c){
     const day=fmt(c.n,{weekday:"long",day:"numeric",month:"short"});
     const miss=k=>{if(ignoreMiss)return "";const m=missing(k);return m.length?missEm(m):""};
@@ -3270,7 +3301,7 @@ function Planner(cfg){
       dropDayRefs(tag,sl,b?Array.from({length:b.len},(_,i)=>b.start+i).filter(d=>d===c.n||!ov("x-"+sl+d)):[c.n])}}
     if(c.n<todayN()&&(c.kind==="main"||c.kind==="day")&&!(R[r]&&R[r].ta)){const bt=eff(blockAt(c.slot,c.n));setOv("x-"+c.slot+c.n,r===bt&&c.n>=startN?null:r);$("dlg").close();if(!opt.quiet)toast(`${fmt(c.n,{weekday:"short"})} ${SLOTWORD[c.slot]}: ${R[r].n}`);return ""}
     if(R[r]&&R[r].ta){P.applyTA(r,opt);return ""}let freed="",why="",moved="";
-    const mx=R[r]?R[r].max||3:3;
+    const mx=R[r]?R[r].t==="bf"?1:R[r].max||3:3;
     if(c.kind==="main"||c.kind==="day")clearOverlap(c.slot,blockAt(c.slot,c.n));
     if(c.kind==="main"){const b=blockAt(c.slot,c.n),end=b.start+b.len;
       /* days left free by an earlier pick come back */
@@ -4096,6 +4127,8 @@ function Planner(cfg){
     if(!keepScroll){const mt=ik&&S[id]["mt-"+ik],dy=ik&&S[id]["dy-"+ik];rc={r,ik,ctx,at,ro:ro||"",cf:null,open:null,pend:null,dd:null,meth:mt&&mt.r===r?mt.v:null,days:dy&&dy.r===r?dy.v:(factsAt(r,ik)?.portions||0)/(cfg.perDay||2)||null}}
     const pvf=!!(pv&&pv.fix),pvE=!!(pv&&!pv.fz);  /* previewing a meal to pick: swaps wait in pv.subs and go on the meal once it's chosen */
     const batch=factsAt(r,ik),x=batch?.recipe||R[r],sm=pvE?{...subsOf(r,null),...pv.subs}:subsOf(r,ik),m=batch?[]:missingSm(r,sm),minOut=needOfSm(r,sm).filter(a=>altOut(a)&&minorA(a,r)),plan=plannedIn(r),store=cfg.storage(x,r),method=x.m||cfg.method;
+    /* A fresh-day carrier moved to lunch/dinner still makes only that day's portions. */
+    if(/^b-?\d+$/.test(ik||"")&&x.t!=="bf"&&rc.days==null)rc.days=1;
     const gsm=(S[id]["rs-"+r]||{}).m||{},ism=ik&&S[id]["is-"+ik]&&S[id]["is-"+ik].r===r?S[id]["is-"+ik].m||{}:{};
     const swapped=swapsOf(sm),adds=addsOf(sm,!!batch),addH=k=>{const h=cfg.addHint?cfg.addHint(k,NAME[k],GRP[k]):["",""];if(id==="lh"&&k==="bayleaf"&&!x.s.some(t=>/simmer/i.test(t)))h[1]="If using, steam the bay leaf alongside the vegetables; remove it before mashing or serving.";return id==="lh"?[scaleIng(h[0],(x.basis||(x.t==="bf"?1:2))*scale),scaleStep(h[1],(x.basis||(x.t==="bf"?1:2))*scale)]:h};
     const omitted=t=>batch?(()=>{const hits=hitsOf(t.toLowerCase(),x.need.flatMap(a=>a.split("|")));return hits.size>0&&[...hits].every(k=>sm[k]==="-")})():goneLine(t,r,sm);
@@ -5727,6 +5760,69 @@ window.addEventListener("online",()=>checkUpdates(true));
 // Dialog changes should hide the notice rather than cover a form or confirmation.
 new MutationObserver(paintUpdate).observe($("dlg"),{attributes:true,attributeFilter:["open"]});
 setTimeout(()=>checkUpdates(),0);
+/* Pull-to-refresh: refresh in place after a committed local save. */
+(()=>{
+ const badge=document.createElement("div");
+ badge.className="pull-refresh";badge.setAttribute("role","status");badge.setAttribute("aria-label","Pull to refresh");
+ badge.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>';
+ document.body.append(badge);
+ let start=null,distance=0,busy=false,frame=0,target=0,resetTimer=0;
+ const blocked=()=>editing||dragging||backupBusy||document.querySelector('dialog[open],.hudrop.open')||document.hidden;
+ function paint(){
+   frame=0;distance=target;
+   badge.style.setProperty("--pull",distance+"px");
+   badge.style.setProperty("--progress",Math.min(1,distance/64));
+   badge.style.setProperty("--turn",Math.min(1,distance/64)*240+"deg");
+   badge.dataset.ready=String(distance>=64);
+ }
+ function move(y){target=y;if(!frame)frame=requestAnimationFrame(paint)}
+ function reset(){start=null;badge.classList.remove("pulling","loading");badge.setAttribute("aria-label","Pull to refresh");move(0);clearTimeout(resetTimer);resetTimer=setTimeout(()=>{badge.hidden=true},240)}
+ async function refresh(){
+   if(busy||blocked())return reset();
+   busy=true;start=null;badge.classList.remove("pulling");badge.classList.add("loading");badge.setAttribute("aria-label","Refreshing");move(64);
+   const began=performance.now();
+   try{
+     await NPH_STORE.flush();
+     const jobs=[checkUpdates(true)];
+     if(window.nphShared?.user&&NPH_STORE.getSync()&&navigator.onLine)jobs.push(nphShared.retry());
+     const result=await Promise.allSettled(jobs);
+     if(!blocked()){PN.render();LH.render();renderShop();histUi()}
+     const failed=result.find(r=>r.status==="rejected");
+     if(failed)toast(failed.reason?.message||"Could not refresh. Try again.");
+     else if(!navigator.onLine)toast("Offline Â· showing saved data");
+     else if(UPD.ready||UPD.reloadReady)toast("App update ready Â· open Settings");
+   }catch(error){toast(error.message||"Could not refresh. Try again.")}
+   finally{
+     setTimeout(()=>{busy=false;reset()},Math.max(0,450-(performance.now()-began)));
+   }
+ }
+ document.addEventListener("touchstart",e=>{
+   if(busy)return;
+   if(blocked()||e.touches.length!==1||window.scrollY>0||e.target.closest("input,textarea,select,[contenteditable],.tabbar")){reset();return}
+   clearTimeout(resetTimer);const t=e.touches[0];start={x:t.clientX,y:t.clientY,claimed:false};target=distance=0;
+ },{passive:true});
+ document.addEventListener("touchmove",e=>{
+   if(!start)return;
+   if(blocked()||e.touches.length!==1){reset();return}
+   const t=e.touches[0],dy=t.clientY-start.y,dx=Math.abs(t.clientX-start.x);
+   if(!start.claimed){
+     if(dx>10&&dx>Math.abs(dy)){reset();return}
+     if(dy<0||window.scrollY>0){reset();return}
+     if(dy<8)return;
+     if(!e.cancelable){reset();return}
+     start.claimed=true;badge.hidden=false;badge.classList.add("pulling");
+     badge.style.setProperty("--refresh-accent","var(--"+(current==="shop"?"shop":current==="lilh"?"lilh":"np")+")");
+   }
+   if(e.cancelable)e.preventDefault();
+   move(Math.min(92,92*(1-Math.exp(-Math.max(0,dy)/150))));
+ },{passive:false});
+ document.addEventListener("touchend",()=>{if(!start)return;const ready=start.claimed&&target>=64;start=null;ready?refresh():reset()},{passive:true});
+ document.addEventListener("touchcancel",()=>{if(!busy)reset()},{passive:true});
+ document.addEventListener("click",e=>{if(start?.claimed||busy&&e.target===badge){e.preventDefault();e.stopPropagation()}},true);
+ document.addEventListener("visibilitychange",()=>{if(document.hidden&&!busy)reset()});
+ badge.hidden=true;
+})();
+
 // The one-time transition parameter is consumed only by this update-aware app.
 if(new URL(location.href).searchParams.has("nph-update")){
   const url=new URL(location.href);url.searchParams.delete("nph-update");history.replaceState(history.state,"",url);

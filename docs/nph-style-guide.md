@@ -672,3 +672,7 @@ Reuse the existing Settings sections, semantic status pill, buttons and modal/Ba
 ### Pass 60 — concise recipe corrections (v2.115, 4 Nov 2026)
 
 Correct the existing method text in place; no new section, explanatory warning block or change to recipe-window layout. Preserve green replacement highlights, blue additions and crossed-out ingredient-list history; active method instructions read as a coherent sequence. The reported mash stays at four steps. Checked the edited mash, fruit porridge and adult stew in light/dark at 320/400px: no horizontal overflow or clipped method text. Reuse all existing type, spacing, header, Back and serving-check components. See recipe-review-v2.115.md and tests/recipe-layout-2115.py.
+
+### Pass 61 — fixed-slot choices and approved refresh (v2.116, 5 Nov 2026)
+
+Apply P's approved real-app refresh preview: a restrained 40px surface indicator, profile-coloured 24px spinner, resistant finger tracking and soft return with stationary page content. Honour safe-area insets and reduced motion. Keep the existing selection-window layout; correct titles/groups to match the visible meal slot after moving cards. Verified all three refresh surfaces in light/dark at 320/400px with actual Chromium touch input, no overflow, no reload/page jump and clean cancellation. The indicator is status feedback, not a modal. Existing window Back handling remains. See slots-refresh-v2.116.md.

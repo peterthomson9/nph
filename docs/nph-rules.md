@@ -10,6 +10,14 @@ Use logo family B across installed app artwork and shared page icons. Follow the
 
 ## 0. Core rules (draft 30 Oct 2026, app v2.74, for P to check)
 
+### v2.116 fixed slot choices and approved pull refresh (5 Nov 2026)
+
+- C6/C22/C23/C29: breakfast, lunch and dinner positions own their Add/Swap recipe categories, group headings, Randomise pool and split-person choice categories. A dragged card must not bring its old picker category into the destination. Derive the visible slot from the saved permutation on every opening, including repeated moves and old saves. Breakfast uses breakfast choices, dinner uses main choices, and lunch retains its supported light lunches.
+- Keep the moved card's existing source identity and write the chosen replacement back to that displayed card. Preserve named batch reservations, effective ingredient records and recorded portions; do not relabel or migrate cooked batch facts to fix a menu. Source-linked cook/leftover behaviour remains source-linked. Fresh breakfast recipes are single-day recipes even when selected through a moved main card. A fresh-day card replaced with a main recipe shows that day's portions in its recipe window.
+- Accept only a real permutation of B/L/D as saved display order; invalid values fall back to the standard view without rewriting the save. Add a permanent regression for every order on both profiles, repeated swaps, actual selected-card replacement and split-person breakfast.
+- v2.102/v2.104/C22/C32/C33: pull-to-refresh uses the approved resistant indicator, spins on release and settles softly while retaining the page. Commit the local save first, then check app updates and retry the existing connected household's sync. Render current views in place; retain saved data, source records, navigation and local Undo. Installing a downloaded app release still requires Update now.
+- Short/sideways/cancelled pulls, gestures starting below the top, multiple fingers, editing, dragging, backup work and open windows must not refresh. Respect reduced motion and profile colours. Report offline/save/sync failures through existing status/toast feedback. Never clear storage or reload the document as a refresh gesture. The indicator is feedback, not a new window/history entry.
+
 ### v2.115 recipe methods after edits (4 Nov 2026)
 
 - C22/C23/R1: a recipe's active method must describe its effective ingredients in cooking order. Do not prepend a full preparation/cooking/serving checklist as an extra cooking step. Keep detailed serving checks in their existing section. Swapped firm fruit is softened before mixing; ripe soft fruit and pouches do not inherit apple steaming instructions.
