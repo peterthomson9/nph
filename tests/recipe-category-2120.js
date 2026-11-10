@@ -7,7 +7,11 @@ for(const [who,p,r,main] of [['pn',PN,'avoeggs','beefstew'],['lh',LH,'b12','s24'
   document.querySelector('#page-'+page+' .rbtn[data-r="'+key+'"]').click();
   const select=$('card').querySelector('[data-recipe-category]');
   assert(select,'recipe library dropdown');
-  select.value=slot;select.dispatchEvent(new Event('change',{bubbles:true}));close();p.render();
+  const trigger=select.querySelector('[data-pcat]');trigger.click();
+  const choice=select.querySelector('[data-slot="'+slot+'"]');
+  assert(choice&&!choice.hidden,'category pill expands');choice.click();
+  assert(trigger.textContent.toLowerCase()===({B:'breakfast',L:'lunch',D:'dinner'})[slot]&&trigger.getAttribute('aria-expanded')==='false','chosen pill becomes collapsed category');
+  close();p.render();
  };
  move(r,'L');move(main,'B');
  assert(!document.querySelector('#'+who+'-shelf-bf [data-r="'+r+'"]')&&document.querySelector('#'+who+'-shelf-lunch [data-r="'+r+'"]'),'recipe moves shelves');

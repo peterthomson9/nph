@@ -687,6 +687,6 @@ Reuse existing shared stock rows, recipe cards, ingredient Add and serving check
 
 ### v2.120 recipe library category
 
-Use a compact labelled native select in the recipe header for Breakfast, Lunch and Dinner. Browser dismissal handles the native chooser. The control uses the existing category typography and theme tokens.
+Use the recipe pill styles and shared expansion animation for Breakfast, Lunch and Dinner. The selected category is the trigger; the two alternatives expand to its right, and choosing either folds them back into the selected label. Use the breakfast, fridge blue and violet theme colours.
 
 Checked in disposable Brave at 320px and 400px in light and dark mode. Category selection persisted after reload.

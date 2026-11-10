@@ -490,8 +490,9 @@ dialog::backdrop{background:rgba(10,12,16,.5)}
 .rtop .big .ic{width:30px;height:30px;stroke-width:1.6}
 .rtop .ht{flex:1;min-width:0;display:grid;gap:3px}
 .rtop .kind{font:800 var(--fs-cap) var(--body);text-transform:uppercase;letter-spacing:.1em;color:var(--c)}
-.rtop .recipe-category{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 7px;max-width:100%;cursor:pointer}
-.recipe-category:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.pc .chip[data-pcat="category"]{cursor:pointer;color:var(--pcol);border-color:color-mix(in srgb,var(--pcol) 40%,transparent);background:color-mix(in srgb,var(--pcol) 12%,var(--surface));transition:background .2s,color .2s}
+.pc .chip[data-pcat="category"].open{background:var(--pcol);color:var(--on-acc)}
+.pc .chip[data-pcat="category"]:focus-visible,.pc .chip[data-pin="category"]:focus-visible{outline:3px solid var(--pcol);outline-offset:2px}
 .rtop h2{font-size:var(--fs-h2);line-height:1.15}
 .facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 @media(max-width:360px){.facts{grid-template-columns:repeat(2,minmax(0,1fr))}.facts>.fact:last-child{grid-column:1/-1}}
@@ -4295,7 +4296,14 @@ function Planner(cfg){
     const pvTag=reshuf?`<span class="pvwhy fix">${esc(reshuf)}</span>`:!pv||r===pv.cur?"":pvf?(m.length?`<span class="pvwhy fix">Swap ${esc(m.map(altName).join(", ").toLowerCase())} to add this</span>`:`<span class="pvwhy ok">${ic("check")}Ready to add</span>`)
       :pv.why?`<span class="pvwhy${soft(pv.why)?" rep "+softKind(pv.why):""}">${esc(pv.why)}</span>`:"";
     const libraryCategory=!pv&&!ik&&!rc.at&&!rc.ro&&editableCategory(r);
-    const categoryLabel=libraryCategory?SLOTWORD[recipeCategory(r)]:T[x.t];
+    const categoryColours={B:"--bf",L:"--k-fridge",D:"--np"};
+    const categoryColour=slot=>"var("+categoryColours[slot]+")";
+    const categorySlot=libraryCategory?recipeCategory(r):null;
+    const categoryPills=libraryCategory?`<div class="chips pc" data-recipe-category>
+      <button type="button" class="chip" data-pcat="category" style="--pcol:${categoryColour(categorySlot)}" aria-expanded="false" aria-label="Meal category: ${cap(SLOTWORD[categorySlot])}">${cap(SLOTWORD[categorySlot])}</button>
+      <button type="button" class="chip" data-pin="category" hidden></button>
+      <button type="button" class="chip" data-pin="category" hidden></button>
+    </div>`:`<span class="kind">${esc(T[x.t])}</span>`;
     $("card").innerHTML=`<div class="rbar" style="--c:var(--i-${icOf(r)})">
       ${pv?`<button class="pvb" data-pvback aria-label="Back to the list" title="Back to the list">${ic("chev")}</button>`:`<span class="big">${ic(icOf(r))}</span>`}
       <h2>${esc(mealName(r,sm,false,x))}</h2>
@@ -4303,7 +4311,7 @@ function Planner(cfg){
       ${pv?`<button class="pvok" data-pvpick="${r}" ${pickable?"":"disabled"} aria-label="Choose ${esc(x.n)}" title="${pickable?(reshuf?"Choose this meal and reshuffle":"Choose this meal"):esc(pv.why)}">${ic("check")}</button>`:`<button class="close" aria-label="Close">×</button>`}
     </div>
     <header class="rhero" style="--c:var(--i-${icOf(r)})">
-      <div class="rtop">${libraryCategory?`<select class="kind recipe-category" data-recipe-category aria-label="Meal category">${Object.entries(SLOTWORD).map(([slot,word])=>`<option value="${slot}" ${slot===recipeCategory(r)?"selected":""}>${cap(word)}</option>`).join("")}</select>`:`<span class="kind">${esc(categoryLabel)}</span>`}${pvTag}${favBtns(r)}</div>
+      <div class="rtop">${categoryPills}${pvTag}${favBtns(r)}</div>
       <div class="facts">
         <div class="fact"><small>Time</small><b>${ic("clock")}${esc(mcur.time)}</b></div>
         ${lockM?lockFact("Cook with",`${ic(methIc(mcur.m))}${esc(mcur.m)}`):mo.length>1&&(pv?!pv.fz:(!rc.at||cm))?`<div class="fact dd${rc.dd==="m"?" open":""}"><button class="ddb" data-dd="m" aria-expanded="${rc.dd==="m"}" aria-haspopup="true"><small>Cook with</small><b>${ic(methIc(mcur.m))}${esc(mcur.m)}</b>${ic("chev","ddc")}</button>
@@ -4340,13 +4348,27 @@ function Planner(cfg){
       ${rc.pen||notesOf(id,r,"end").length?`<section><h4>Our notes</h4>${notesBlock(r,"end")}</section>`:""}
     </div>`;
     $("dlg").style.setProperty("--acc",`var(--${cfg.accent})`);
-    const categoryInput=$("card").querySelector("[data-recipe-category]");
-    if(categoryInput)categoryInput.addEventListener("change",()=>{
-      const slot=categoryInput.value;
-      if(!Object.hasOwn(SLOTWORD,slot))return;
-      put(id,"category-"+r,{v:slot});
-      toast("Moved to "+SLOTWORD[slot]);
-    });
+    const categoryGroup=$("card").querySelector("[data-recipe-category]");
+    if(categoryGroup){
+      const current=categoryGroup.querySelector("[data-pcat]"),choices=[...categoryGroup.querySelectorAll("[data-pin]")];
+      categoryGroup.addEventListener("click",event=>{
+        if(event.target.closest("[data-pcat]")&&current.getAttribute("aria-expanded")==="false"){
+          Object.keys(SLOTWORD).filter(slot=>slot!==recipeCategory(r)).forEach((slot,i)=>{
+            choices[i].dataset.slot=slot;
+            choices[i].textContent=cap(SLOTWORD[slot]);
+            choices[i].style.setProperty("--pcol",categoryColour(slot));
+          });
+        }
+        const choice=event.target.closest("[data-pin]");
+        if(!choice||current.getAttribute("aria-expanded")!=="true")return;
+        const slot=choice.dataset.slot;
+        put(id,"category-"+r,{v:slot});
+        current.textContent=cap(SLOTWORD[slot]);
+        current.setAttribute("aria-label","Meal category: "+current.textContent);
+        current.style.setProperty("--pcol",categoryColour(slot));
+        current.focus({preventScroll:true});
+      });
+    }
     if(!$("dlg").open)$("dlg").showModal();$("dlg").scrollTop=keepScroll?st:0;
   };
   const prevScroll=()=>$("dlg").scrollTop;
