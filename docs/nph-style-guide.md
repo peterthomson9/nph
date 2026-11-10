@@ -684,3 +684,9 @@ Use a trailing book for recipe previews and place wrapping reasons below the cho
 ### Pass 62 — Lil H recipe and stock additions (v2.118)
 
 Reuse existing shared stock rows, recipe cards, ingredient Add and serving checks. Toast, packet rice and all three additions were checked in light and dark at 320px and 400px; recipe text wraps without horizontal overflow.
+
+### v2.120 recipe library category
+
+Use a compact labelled native select in the recipe header for Breakfast, Lunch and Dinner. Browser dismissal handles the native chooser. The control uses the existing category typography and theme tokens.
+
+Checked in disposable Brave at 320px and 400px in light and dark mode. Category selection persisted after reload.

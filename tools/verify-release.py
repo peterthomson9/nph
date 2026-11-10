@@ -21,6 +21,7 @@ def main():
  jobs.extend([('fixed slot recipe choices','tests/slot-selection-2116.js','2026-11-05T09:00:00',None),('pull refresh','tests/refresh-2116.py','',None)])
  jobs.append(('picker and Settings','tests/picker-settings-2117.py','',None))
  jobs.append(('Lil H ingredients and fresh proteins','tests/lilh-food-2118.js','2026-11-10T09:00:00',None))
+ jobs.append(('recipe library categories','tests/recipe-category-2120.js','2026-11-10T09:00:00',None))
  failed=[];logs=[]
  with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
   for name,code,output in pool.map(run,jobs):

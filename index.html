@@ -490,6 +490,8 @@ dialog::backdrop{background:rgba(10,12,16,.5)}
 .rtop .big .ic{width:30px;height:30px;stroke-width:1.6}
 .rtop .ht{flex:1;min-width:0;display:grid;gap:3px}
 .rtop .kind{font:800 var(--fs-cap) var(--body);text-transform:uppercase;letter-spacing:.1em;color:var(--c)}
+.rtop .recipe-category{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 7px;max-width:100%;cursor:pointer}
+.recipe-category:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .rtop h2{font-size:var(--fs-h2);line-height:1.15}
 .facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 @media(max-width:360px){.facts{grid-template-columns:repeat(2,minmax(0,1fr))}.facts>.fact:last-child{grid-column:1/-1}}
@@ -2594,7 +2596,7 @@ function setQty(k,q){const cur=stockOf(k);put("stock",k,{...cur,out:cur.out!==fa
 
 /* ================= Meal planner (one engine, two pages) ================= */
 const PLANNERS={};
-const NPH_V=window.NPH_VERSION||"2.119";
+const NPH_V=window.NPH_VERSION||"2.120";
 function Planner(cfg){
   const id=cfg.id, R=cfg.R, T=cfg.T, IC=cfg.IC, BLK=cfg.BLK, ANCHOR=cfg.anchor;
   const P={id,cfg};
@@ -2818,6 +2820,17 @@ function Planner(cfg){
   const BF=keysOf(t=>t==="bf"),LL=BF.filter(k=>R[k].ll), NL=keysOf(t=>t==="n"), PL=keysOf(t=>t==="p"), BAKE=keysOf(t=>t==="bake");
   for(const k of BF)R[k].max=1; // A fresh breakfast never becomes a multi-day batch after a card move.
   const SLOTWORD={B:"breakfast",L:"lunch",D:"dinner"};
+  const LUN=new Set([...BLK.L.map(b=>b[2]),...(cfg.BLK2?cfg.BLK2.L.map(b=>b[2]):[]),...(cfg.lunchExtra||[])]),DIN=new Set([...BLK.D.map(b=>b[2]),...(cfg.BLK2?cfg.BLK2.D.map(b=>b[2]):[])]);
+  const editableCategory=r=>BF.includes(r)||MAIN.includes(r);
+  const categoryOverride=r=>{
+    const value=S[id]["category-"+r]?.v;
+    return editableCategory(r)&&Object.hasOwn(SLOTWORD,value)?value:null;
+  };
+  const recipeCategory=r=>categoryOverride(r)||(BF.includes(r)?"B":LUN.has(r)?"L":"D");
+  function categoryChoices(defaults,slot){
+    return [...new Set([...defaults.filter(r=>!categoryOverride(r)||categoryOverride(r)===slot),
+      ...[...BF,...MAIN].filter(r=>categoryOverride(r)===slot)])];
+  }
   const SK="__skip";  /* a removed (skipped) meal */
   const OFF=cfg.cycleOff||0, cyc=n=>mod(n-OFF,28);  /* which day of the shown 4-week cycle */
   const A0=Math.round(ANCHOR/DAY),absOf=n=>A0+n,nOfAbs=a=>a-A0;
@@ -3129,6 +3142,17 @@ function Planner(cfg){
       const day=fmt(c.n,{weekday:"long",day:"numeric",month:"short"});
       p.title=["n","p"].includes(c.kind)?c.kind.toUpperCase()+"'s "+SLOTWORD[menu.slot]+" on "+day:(p.cur===SK?"Add":"Swap")+" "+day+" "+SLOTWORD[menu.slot];
     }
+    if(menu.kind!=="bake"&&Object.hasOwn(SLOTWORD,menu.slot||"B")){
+      const slot=menu.slot||"B";
+      p.list=categoryChoices(p.list,slot);
+      if(p.plan&&categoryOverride(p.plan)&&categoryOverride(p.plan)!==slot)p.plan=null;
+      if(p.groups){
+        const keys=new Set(p.list);
+        p.groups=p.groups.map(g=>({...g,keys:g.keys.filter(k=>keys.has(k))})).filter(g=>g.keys.length);
+        const extra=p.list.filter(k=>!p.groups.some(g=>g.keys.includes(k)));
+        if(extra.length)p.groups.push({label:"Other",ic:"bowl",keys:extra});
+      }
+    }
     if(NUT&&["main","day","bf"].includes(c.kind)){const w0=p.why;p.why=k=>w0(k)||dietWhy(k,menu)}
     if(menu.kind==="bf"&&p.cur===SK)p.title=p.title.replace(/^Swap /,"Add ");
     return p;
@@ -3225,7 +3249,7 @@ function Planner(cfg){
       return `<div class="og stg shut" style="--kc:var(--k-${w})"><button class="oghead" data-og aria-expanded="false">${ic(icn)}<span>${lab}</span><small>${ok?plural(ok,"meal"):"none ready"}</small>${ic("chev","chev")}</button><div class="ogbody" hidden>${pastPick?"":shNote}${rows.map(o=>stOpt(w,o)).join("")}</div></div>`}).join("");
     let body="";
     if(p.grouped&&!p.groups){const gs=(p.groupTypes||cfg.typeOrder).map(t=>({label:T[t],ic:IC[t],keys:p.list.filter(k=>R[k].t===t)})).filter(g=>g.keys.length);
-      const ll=p.list.filter(k=>R[k].ll);if(ll.length)gs.push({label:"Light lunch",ic:"toast",keys:ll});
+      const ll=p.list.filter(k=>!gs.some(g=>g.keys.includes(k)));if(ll.length)gs.push({label:ll.every(k=>R[k].ll)?"Light lunch":"Other",ic:"toast",keys:ll});
       p.groups=gs;
       p.note+="";}
     const curG=-1;  /* every group starts closed */
@@ -3996,8 +4020,11 @@ function Planner(cfg){
     st.className="ds"+(bad?" bad":"");
     $(id+"-pantry").innerHTML=cfg.pantryGroups().map(([cid,its])=>[cid,its.filter(i=>!isGone(i[0])).map(i=>[i[0],NAME[i[0]]])]).filter(g=>g[1].length).map(([cid,items])=>`<div class="pgroup fsec${folds.has("p-"+cid)?"":" shut"}${items.some(i=>isOut(i[0]))?" hasout":""}" style="--pc:var(--k-${cid})"><button class="fhead plab" data-fold="p-${cid}" aria-expanded="${folds.has("p-"+cid)}">${ic("chev","chev")}${ic(SHOP_IC[cid])}${catName[cid]}<small>${items.filter(i=>isOut(i[0])).length?items.filter(i=>isOut(i[0])).length+" out":""}</small></button><div class="pills">${items.map(([k,nm])=>`<label class="pill"><input type="checkbox" id="${id}-ing-${k}" data-ing="${k}"${isOut(k)?"":" checked"}><span>${esc(nm)}</span></label>`).join("")}</div></div>`).join("");
     const btn=k=>`<button class="rbtn${unavail(k)?" gone":missing(k).length?(fixable(k)?" fixm":" off"):""}"${!unavail(k)&&missing(k).length&&fixable(k)?` title="${esc(missEm(missing(k)))} · open it to swap for something you have"`:""}${unavail(k)?' title="Needs something you deleted from the list"':""} style="--c:var(--i-${icOf(k)});--tcol:var(--${R[k].t})" data-r="${k}">${ic(icOf(k))}${esc(R[k].n)}${(()=>{const f=favOf(k),hs=[["p","p"],["n","n"],["h","lilh"]].filter(([w])=>f[w]);return hs.length?`<span class="rfh" title="Favourite of ${hs.map(([w])=>w==="h"?"Lil H":w.toUpperCase()).join(" and ")}">${hs.map(([,c])=>`<i style="--fc:var(--${c})">${ic("heart")}</i>`).join("")}</span>`:""})()}<span class="m">${esc(R[k].m||R[k].time)}</span></button>`;
-    const LUN=new Set([...BLK.L.map(b=>b[2]),...(cfg.BLK2?cfg.BLK2.L.map(b=>b[2]):[]),...(cfg.lunchExtra||[])]),DIN=new Set([...BLK.D.map(b=>b[2]),...(cfg.BLK2?cfg.BLK2.D.map(b=>b[2]):[])]);
-    const shelfKeys=t=>t==="lunch"?[...MAIN.filter(k=>LUN.has(k)),...LL]:t==="dinner"?MAIN.filter(k=>DIN.has(k)||!LUN.has(k)):keysOf(x=>x===t);
+    const shelfKeys=t=>{
+      const defaults=t==="lunch"?[...MAIN.filter(k=>LUN.has(k)),...LL]:t==="dinner"?MAIN.filter(k=>DIN.has(k)||!LUN.has(k)):keysOf(x=>x===t);
+      const slot={bf:"B",lunch:"L",dinner:"D"}[t];
+      return slot?categoryChoices(defaults,slot):defaults;
+    };
     cfg.shelves.forEach(([t])=>{const ks=shelfKeys(t);$(id+"-shelf-"+t).innerHTML=ks.map(btn).join("");$(id+"-cnt-"+t).textContent=ks.length+" dishes"});
     $(id+"-rcount").textContent=`${Object.keys(R).filter(k=>!R[k].ta).length} dishes`;
     showDrops();applyRQ();updFoldAll();
@@ -4267,6 +4294,8 @@ function Planner(cfg){
     const reshuf=pv&&rc.days&&span&&rc.days>free?ovTxt(rc.days):"";
     const pvTag=reshuf?`<span class="pvwhy fix">${esc(reshuf)}</span>`:!pv||r===pv.cur?"":pvf?(m.length?`<span class="pvwhy fix">Swap ${esc(m.map(altName).join(", ").toLowerCase())} to add this</span>`:`<span class="pvwhy ok">${ic("check")}Ready to add</span>`)
       :pv.why?`<span class="pvwhy${soft(pv.why)?" rep "+softKind(pv.why):""}">${esc(pv.why)}</span>`:"";
+    const libraryCategory=!pv&&!ik&&!rc.at&&!rc.ro&&editableCategory(r);
+    const categoryLabel=libraryCategory?SLOTWORD[recipeCategory(r)]:T[x.t];
     $("card").innerHTML=`<div class="rbar" style="--c:var(--i-${icOf(r)})">
       ${pv?`<button class="pvb" data-pvback aria-label="Back to the list" title="Back to the list">${ic("chev")}</button>`:`<span class="big">${ic(icOf(r))}</span>`}
       <h2>${esc(mealName(r,sm,false,x))}</h2>
@@ -4274,7 +4303,7 @@ function Planner(cfg){
       ${pv?`<button class="pvok" data-pvpick="${r}" ${pickable?"":"disabled"} aria-label="Choose ${esc(x.n)}" title="${pickable?(reshuf?"Choose this meal and reshuffle":"Choose this meal"):esc(pv.why)}">${ic("check")}</button>`:`<button class="close" aria-label="Close">×</button>`}
     </div>
     <header class="rhero" style="--c:var(--i-${icOf(r)})">
-      <div class="rtop"><span class="kind">${T[x.t]}</span>${pvTag}${favBtns(r)}</div>
+      <div class="rtop">${libraryCategory?`<select class="kind recipe-category" data-recipe-category aria-label="Meal category">${Object.entries(SLOTWORD).map(([slot,word])=>`<option value="${slot}" ${slot===recipeCategory(r)?"selected":""}>${cap(word)}</option>`).join("")}</select>`:`<span class="kind">${esc(categoryLabel)}</span>`}${pvTag}${favBtns(r)}</div>
       <div class="facts">
         <div class="fact"><small>Time</small><b>${ic("clock")}${esc(mcur.time)}</b></div>
         ${lockM?lockFact("Cook with",`${ic(methIc(mcur.m))}${esc(mcur.m)}`):mo.length>1&&(pv?!pv.fz:(!rc.at||cm))?`<div class="fact dd${rc.dd==="m"?" open":""}"><button class="ddb" data-dd="m" aria-expanded="${rc.dd==="m"}" aria-haspopup="true"><small>Cook with</small><b>${ic(methIc(mcur.m))}${esc(mcur.m)}</b>${ic("chev","ddc")}</button>
@@ -4311,6 +4340,13 @@ function Planner(cfg){
       ${rc.pen||notesOf(id,r,"end").length?`<section><h4>Our notes</h4>${notesBlock(r,"end")}</section>`:""}
     </div>`;
     $("dlg").style.setProperty("--acc",`var(--${cfg.accent})`);
+    const categoryInput=$("card").querySelector("[data-recipe-category]");
+    if(categoryInput)categoryInput.addEventListener("change",()=>{
+      const slot=categoryInput.value;
+      if(!Object.hasOwn(SLOTWORD,slot))return;
+      put(id,"category-"+r,{v:slot});
+      toast("Moved to "+SLOTWORD[slot]);
+    });
     if(!$("dlg").open)$("dlg").showModal();$("dlg").scrollTop=keepScroll?st:0;
   };
   const prevScroll=()=>$("dlg").scrollTop;

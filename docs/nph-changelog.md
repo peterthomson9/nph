@@ -107,3 +107,5 @@ One dated line per change to how NPH looks or works. Newest at the bottom.
 10 Nov 2026 · v2.118 · Shared Warburtons wholemeal bread, avocado and plain white packet rice, five Lil H recipes and fresh lunch/dinner protein variety on Re-plan.
 
 - 10 Nov 2026 · v2.119 · Rename the shared loaf to Sliced bread and allow compatible N & P swaps for sliced bread and packet rice.
+
+- 10 Nov 2026 · v2.120 · Add a meal category dropdown in the recipe library and follow the selected category in meal pickers.

@@ -438,3 +438,5 @@ v2.117: Picker warning presentation uses effective ingredient and day checks; ch
 - C26/LH2: Re-plan and Reshuffle reject a suggested fresh lunch or dinner if it shares a main protein ingredient with the other fresh main that day, including effective recipe edits. Stored meals and leftovers do not count. Keep protected choices, and leave a slot alone if no suitable replacement is available. Other household meal rules still apply.
 
 v2.119 (C23/C31): Display the shared wholemeal loaf as Sliced bread, retaining its stock key. Sliced bread and plain white packet rice have no default N & P recipe assignments. Offer sliced bread for sourdough and packet rice for rice served separately or fried rice, adapting the method for ready-cooked rice.
+
+v2.120 (C22/C23): Breakfast, Lunch and Dinner category selections made in the recipe library are saved per recipe and planner. An explicit selection moves that recipe to the matching shelf and fresh-recipe Add/Swap options, using the visible meal position after reordering. Category is separate from recipe type, existing plan and cooked batch facts. Stored portions are selected separately.
