@@ -105,3 +105,5 @@ One dated line per change to how NPH looks or works. Newest at the bottom.
 5 Nov 2026 · v2.117 · Picker rows give the recipe name and warnings separate lines with book previews. Settings opens as a section index. Improved small-text contrast and shortened layout, stock and empty-state copy.
 
 10 Nov 2026 · v2.118 · Shared Warburtons wholemeal bread, avocado and plain white packet rice, five Lil H recipes and fresh lunch/dinner protein variety on Re-plan.
+
+- 10 Nov 2026 · v2.119 · Rename the shared loaf to Sliced bread and allow compatible N & P swaps for sliced bread and packet rice.

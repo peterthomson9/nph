@@ -22,6 +22,12 @@ for(const [who,p] of Object.entries(PLANNERS)){
  }
  delete S[who]['is-recipe-audit'];
 }
+const adult=PLANNERS.pn;
+assert(Object.values(adult.R).every(x=>!x.need?.some(k=>/wholemealbread|packetrice/.test(k))),"adult default ingredients stay distinct");
+assert(adult._dbg.swapAllowed("avoeggs","bread","wholemealbread"),"sliced bread can replace sourdough");
+assert(adult._dbg.swapAllowed("curry","rice","packetrice")&&!adult._dbg.swapAllowed("rizseshus","rice","packetrice")&&!adult._dbg.swapAllowed("toltott","rice","packetrice"),"packet rice only replaces compatible dry rice uses");
+assert(open(adult,"curry",{rice:"packetrice"}).includes("pouch instructions"),"packet rice method follows the pouch");
+assert(!open(adult,"friedrice",{rice:"packetrice"}).includes("drain"),"fried rice skips dry rice preparation");
 const p=PLANNERS.lh;
 let t=open(p,'s13',{potato:'sweetpotato',milk:'-'});
 assert(document.querySelectorAll('.steps li').length===4,'pictured recipe stays at four steps');
