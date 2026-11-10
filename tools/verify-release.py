@@ -20,6 +20,7 @@ def main():
  jobs.extend([('recipe methods and substitutions','tests/recipe-methods-2115.js','2026-11-04T10:00:00',None),('recipe layout','tests/recipe-layout-2115.py','',None)])
  jobs.extend([('fixed slot recipe choices','tests/slot-selection-2116.js','2026-11-05T09:00:00',None),('pull refresh','tests/refresh-2116.py','',None)])
  jobs.append(('picker and Settings','tests/picker-settings-2117.py','',None))
+ jobs.append(('Lil H ingredients and fresh proteins','tests/lilh-food-2118.js','2026-11-10T09:00:00',None))
  failed=[];logs=[]
  with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
   for name,code,output in pool.map(run,jobs):

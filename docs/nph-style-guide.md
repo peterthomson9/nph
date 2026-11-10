@@ -680,3 +680,7 @@ Apply P's approved real-app refresh preview: a restrained 40px surface indicator
 ### Approved picker and Settings review (v2.117)
 
 Use a trailing book for recipe previews and place wrapping reasons below the choice. Keep recent-only advice blue, everyday warnings amber and expired food red. Omit the colour key and Just this day introduction. Settings opens with the five sections folded, with actionable update and household summaries; use the installed version in App updates. Use darker light-theme semantic text for change details and Cooked status. Keep the empty storage header count and use concise stock/layout labels.
+
+### Pass 62 — Lil H recipe and stock additions (v2.118)
+
+Reuse existing shared stock rows, recipe cards, ingredient Add and serving checks. Toast, packet rice and all three additions were checked in light and dark at 320px and 400px; recipe text wraps without horizontal overflow.

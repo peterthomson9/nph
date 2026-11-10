@@ -32,9 +32,9 @@ async def main():
    for icon in icons:
     digest=await page.evaluate("""async path=>{const r=await fetch(path);if(!r.ok)throw Error('Icon unavailable');return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await r.arrayBuffer())),b=>b.toString(16).padStart(2,'0')).join('')}""",icon['src'])
     assert digest.startswith(icon['src'].split('?v=')[1])
-   assert await page.evaluate('Object.keys(PLANNERS.lh.R).length')==40
+   assert await page.evaluate('Object.keys(PLANNERS.lh.R).length')==45
    assert not errors,errors
-   print(json.dumps({'release':RELEASE,'cacheUpdated':True,'offlineReload':True,'recipes':40,'pageErrors':0}))
+   print(json.dumps({'release':RELEASE,'cacheUpdated':True,'offlineReload':True,'recipes':45,'pageErrors':0}))
    await browser.close()
  finally: server.shutdown();server.server_close()
 asyncio.run(main())

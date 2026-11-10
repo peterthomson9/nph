@@ -1,7 +1,7 @@
 const assert=(x,m)=>{if(!x)throw Error(m)},wait=()=>new Promise(r=>setTimeout(r,100)),close=async()=>{document.querySelector('#dlg').close();await wait()},p=PLANNERS.lh,d=p._dbg,R=d.R,t=d.todayN(),out={version:NPH_V};
 const open=(r,ik=null,at=null,ro=null)=>p.openR(r,ik,'test',false,false,at,ro),text=sel=>document.querySelector(sel).textContent;
 go('lilh');document.querySelector('#page-lilh').click();
-assert(Object.keys(R).length===40,'40 recipes');
+assert(Object.keys(R).length===45,'45 recipes');
 assert(p.cfg.ING.every(([k])=>LH_PREP[k]),'preparation for every supported ingredient');
 for(const [r,x] of Object.entries(R)){
  assert(d.review(r).ready,r+' reviewed');assert(x.basis===(x.t==='bf'?1:2),r+' portion basis');
@@ -15,7 +15,7 @@ for(const [r,x] of Object.entries(R)){
    }
  }await close();
 }
-out.recipes=40;out.mains=29;out.scaledMains=87;
+out.recipes=45;out.mains=32;out.scaledMains=96;
 assert(d.scaleStep('Use ½ tsp oil and 100ml water; simmer 15 min with 2cm water below the basket.',1.5)==='Use ¾ tsp oil and 150ml water; simmer 15 min with 2cm water below the basket.','quantities only');
 assert(d.scaleIng('80g beef mince (5% fat)',.5)==='40g beef mince (5% fat)','fat percentage unchanged');
 assert(!/250ml/.test(R.s3.s[0])&&R.s3.s[1].includes('250ml'),'rinsing separate from cooking');

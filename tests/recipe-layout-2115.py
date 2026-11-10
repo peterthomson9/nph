@@ -13,7 +13,7 @@ async def main():
     await ctx.add_init_script("localStorage.setItem('nph-me','P');localStorage.setItem('nph-theme','"+theme+"')")
     page=await ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
     await page.goto((APP/'index.html').as_uri());await page.wait_for_function("typeof S!=='undefined'")
-    for name,who,r,sm in [('pictured','lh','s13',{'potato':'sweetpotato','milk':'-'}),('fruit','lh','b1',{'banana':'apple','milk':'-','+pb':1}),('stew','pn','beefstew',{'beef':'chthigh'})]:
+    for name,who,r,sm in [('pictured','lh','s13',{'potato':'sweetpotato','milk':'-'}),('fruit','lh','b1',{'banana':'apple','milk':'-','+pb':1}),('stew','pn','beefstew',{'beef':'chthigh'}),('toast','lh','b12',{}),('packet-rice','lh','s24',{}),('fresh-additions','lh','b1',{'+packetrice':1,'+wholemealbread':1,'+avocado':1})]:
      await page.evaluate("([who,r,sm])=>{S[who]['is-layout']={r,m:sm};PLANNERS[who].openR(r,'layout','Recipe check')}",[who,r,sm])
      await page.locator('.steps').scroll_into_view_if_needed();await page.wait_for_timeout(100)
      geometry=await page.evaluate("""()=>{const d=document.querySelector('#dlg'),all=[...document.querySelectorAll('.steps p,.ingl .it')];return {overflow:d.scrollWidth>d.clientWidth+1,clipped:all.some(e=>e.scrollWidth>e.clientWidth+1),steps:document.querySelector('.steps').innerText}}""")
@@ -25,5 +25,5 @@ async def main():
     await ctx.close()
   await b.close()
  (out/'checks.json').write_text(json.dumps(results,indent=2),encoding='utf-8')
- print('PASS: 12 recipe layouts, light/dark, 320/400px; no overflow or clipped text')
+ print('PASS: 24 recipe layouts, light/dark, 320/400px; no overflow or clipped text')
 asyncio.run(main())

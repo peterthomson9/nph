@@ -431,3 +431,8 @@ A fresh browser with no valid P/N identity opens a dedicated Whose phone is this
 Apply the owner-approved compact typography and sentence-case roles from the style guide. Preserve full essential instructions and recipe names, readable wrapping, text-input minimum size, and all meal/storage/nutrition behaviour. Keep meal names 12px and Cooked date/portion metadata 10px.
 
 v2.117: Picker warning presentation uses effective ingredient and day checks; choose and randomise retain their existing eligibility rules.
+
+### v2.118 · Lil H shared ingredients and fresh protein variety
+
+- C16/C22/C31: wholemeal bread and packet rice each have their own shared stock item. Avocado uses the existing shared item. All three are optional Add choices on Lil H recipes when absent, with reviewed serving and nutrition metadata. The requested Warburtons loaf contains salt; use it as the named exception and add no salt at home. Choose plain packet rice without added salt. Heat only the rice being served, and keep rice, toast and avocado out of the stored batch.
+- C26/LH2: Re-plan and Reshuffle reject a suggested fresh lunch or dinner if it shares a main protein ingredient with the other fresh main that day, including effective recipe edits. Stored meals and leftovers do not count. Keep protected choices, and leave a slot alone if no suitable replacement is available. Other household meal rules still apply.

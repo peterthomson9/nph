@@ -103,3 +103,5 @@ One dated line per change to how NPH looks or works. Newest at the bottom.
 - 5 Nov 2026 · v2.116 · Keep Add/Swap/Randomise recipe categories tied to visible breakfast/lunch/dinner slots after card moves, including repeated swaps and split meals. Preserve moved source/batch links and fresh-day portions. Implement approved in-place pull-to-refresh with resistant indicator, safe save/sync/update checks, cancellation and reduced motion. Add slot-permutation and real-touch release regressions.
 
 5 Nov 2026 · v2.117 · Picker rows give the recipe name and warnings separate lines with book previews. Settings opens as a section index. Improved small-text contrast and shortened layout, stock and empty-state copy.
+
+10 Nov 2026 · v2.118 · Shared Warburtons wholemeal bread, avocado and plain white packet rice, five Lil H recipes and fresh lunch/dinner protein variety on Re-plan.
